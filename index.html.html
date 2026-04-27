@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal de Detección Química</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+        :root{--bg:#060a13;--panel:rgba(15,23,42,0.6);--card:rgba(15,23,42,0.4);--glass:rgba(255,255,255,0.03);--border:rgba(255,255,255,0.08);--text:#f1f5f9;--text2:#94a3b8;--text3:#475569;--accent:#00d4ff;--accent-glow:rgba(0,212,255,0.3);--accent-soft:rgba(0,212,255,0.1);--sh:0 2px 8px rgba(0,0,0,0.3);--sh-md:0 4px 20px rgba(0,0,0,0.4);--sh-lg:0 8px 40px rgba(0,0,0,0.5);--r-sm:8px;--r-md:12px;--r-lg:16px;--r-xl:20px;--t-fast:0.15s cubic-bezier(0.4,0,0.2,1);--t-base:0.3s cubic-bezier(0.4,0,0.2,1);--cat-no-metal:#34d399;--cat-alcalino:#f97316;--cat-alcalinoterreo:#facc15;--cat-transicion:#60a5fa;--cat-metal-post:#a78bfa;--cat-metaloide:#c084fc;--cat-halogeno:#f87171;--cat-noble:#f472b6;--cat-lantanido:#22d3ee;--cat-actinido:#fb923c}
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;line-height:1.6}
+        canvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
+        .orb{position:fixed;border-radius:50%;filter:blur(120px);opacity:0.15;pointer-events:none;z-index:0;animation:orbF 20s ease-in-out infinite}
+        .orb:nth-child(1){width:600px;height:600px;background:radial-gradient(circle,var(--accent),transparent 70%);top:-200px;left:-100px}
+        .orb:nth-child(2){width:500px;height:500px;background:radial-gradient(circle,#7c3aed,transparent 70%);bottom:-150px;right:-100px;animation-delay:-7s;animation-duration:25s}
+        @keyframes orbF{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(30px,-20px) scale(1.05)}}
+        .header{position:sticky;top:0;z-index:100;padding:0;background:rgba(6,10,19,0.8);backdrop-filter:blur(20px) saturate(1.5);border-bottom:1px solid var(--border)}
+        .header-in{max-width:1400px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+        .logo{display:flex;align-items:center;gap:12px}
+        .logo-icon{width:40px;height:40px;border-radius:var(--r-md);background:linear-gradient(135deg,var(--accent),#7c3aed);display:flex;align-items:center;justify-content:center;font-size:1.2rem;box-shadow:0 0 20px var(--accent-glow);animation:lp 3s ease-in-out infinite}
+        @keyframes lp{0%,100%{box-shadow:0 0 20px var(--accent-glow)}50%{box-shadow:0 0 35px var(--accent-glow)}}
+        .logo-t h1{font-size:1.1rem;font-weight:700;letter-spacing:-0.02em;background:linear-gradient(135deg,var(--text) 0%,var(--accent) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+        .logo-t p{font-size:0.7rem;color:var(--text3);font-weight:500;text-transform:uppercase}
+        .badge{padding:4px 12px;border-radius:20px;background:var(--accent-soft);border:1px solid rgba(0,212,255,0.2);font-size:0.7rem;font-weight:600;color:var(--accent)}
+        .toolbar{max-width:1400px;margin:0 auto;padding:20px 24px;position:relative;z-index:10}
+        .search-box{position:relative;margin-bottom:16px}
+        .search-box svg{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--text3);width:18px;height:18px;pointer-events:none;transition:color var(--t-base)}
+        .search-box:focus-within svg{color:var(--accent)}
+        .search-in{width:100%;padding:12px 16px 12px 46px;border-radius:var(--r-lg);border:1px solid var(--border);background:var(--card);backdrop-filter:blur(10px);color:var(--text);font-size:0.95rem;font-family:inherit;outline:none;transition:all var(--t-base)}
+        .search-in::placeholder{color:var(--text3)}
+        .search-in:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft),var(--sh-md)}
+        .search-cl{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,0.1);color:var(--text2);cursor:pointer;display:none;align-items:center;justify-content:center;font-size:0.8rem;transition:all var(--t-fast)}
+        .search-cl.vis{display:flex}
+        .filters{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+        .filters::-webkit-scrollbar{display:none}
+        .chip{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--card);backdrop-filter:blur(10px);color:var(--text2);font-size:0.75rem;font-weight:500;cursor:pointer;transition:all var(--t-base);white-space:nowrap;font-family:inherit}
+        .chip:hover{border-color:rgba(255,255,255,0.15);color:var(--text);background:rgba(255,255,255,0.06)}
+        .chip.act{color:#fff;border-color:transparent;font-weight:600;background:linear-gradient(135deg,var(--accent),#7c3aed)}
+        .chip[data-c="no-metal"].act{background:var(--cat-no-metal)}
+        .chip[data-c="alcalino"].act{background:var(--cat-alcalino)}
+        .chip[data-c="alcalinoterreo"].act{background:var(--cat-alcalinoterreo);color:#000}
+        .chip[data-c="transicion"].act{background:var(--cat-transicion)}
+        .chip[data-c="metal-post"].act{background:var(--cat-metal-post)}
+        .chip[data-c="metaloide"].act{background:var(--cat-metaloide)}
+        .chip[data-c="halogeno"].act{background:var(--cat-halogeno)}
+        .chip[data-c="noble"].act{background:var(--cat-noble)}
+        .chip[data-c="lantanido"].act{background:var(--cat-lantanido);color:#000}
+        .chip[data-c="actinido"].act{background:var(--cat-actinido)}
+        .controls{display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.06)}
+        .ctrl-g{display:flex;align-items:center;gap:8px}
+        .btn-i{width:36px;height:36px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all var(--t-fast)}
+        .btn-i:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+        .btn-i:active{transform:scale(0.95)}
+        .btn-t{padding:8px 16px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:0.8rem;font-weight:500;cursor:pointer;transition:all var(--t-fast);font-family:inherit;display:flex;align-items:center;gap:6px}
+        .btn-t:hover{border-color:rgba(255,255,255,0.15);color:var(--text)}
+        .btn-t.act{background:var(--accent);border-color:var(--accent);color:#000;font-weight:600}
+        .zoom-d{font-size:0.75rem;color:var(--accent);font-weight:600;min-width:45px;text-align:center;font-family:'JetBrains Mono',monospace}
+        .table-w{position:relative;z-index:10;max-width:1400px;margin:0 auto;padding:0 24px 24px;overflow-x:auto;overflow-y:auto;max-height:62vh;scrollbar-width:thin;scrollbar-color:var(--accent-soft) transparent;border-radius:var(--r-lg)}
+        .table-w::-webkit-scrollbar{width:6px;height:6px}
+        .table-w::-webkit-scrollbar-track{background:transparent}
+        .table-w::-webkit-scrollbar-thumb{background:var(--accent-soft);border-radius:3px}
+        .p-table{display:grid;grid-template-columns:28px repeat(18,minmax(48px,1fr));grid-template-rows:24px repeat(10,48px);gap:2px;min-width:950px;margin:0 auto;transform-origin:top left;transition:transform 0.5s cubic-bezier(0.4,0,0.2,1);padding:8px}
+        .g-label{display:flex;align-items:center;justify-content:center;font-size:0.6rem;font-weight:700;color:var(--accent);background:var(--accent-soft);border-radius:4px;border:1px solid rgba(0,212,255,0.15)}
+        .p-label{display:flex;align-items:center;justify-content:center;font-size:0.6rem;font-weight:700;color:var(--accent);background:var(--accent-soft);border-radius:4px;border:1px solid rgba(0,212,255,0.15)}
+        .el{position:relative;background:var(--card);border:1px solid var(--border);border-radius:var(--r-sm);display:flex;flex-direction:column;justify-content:center;align-items:center;cursor:pointer;transition:all var(--t-base);overflow:hidden;min-width:48px;min-height:48px;backdrop-filter:blur(4px)}
+        .el::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity var(--t-base);z-index:0}
+        .el::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:currentColor;opacity:0.4;transition:opacity var(--t-base)}
+        .el:hover{transform:translateY(-3px) scale(1.12);z-index:50;border-color:currentColor;box-shadow:var(--sh-lg),0 0 20px currentColor}
+        .el:hover::before{opacity:1}
+        .el:hover::after{opacity:0.8}
+        .el:active{transform:translateY(-1px) scale(1.05)}
+        .el.hl{border-color:var(--accent);box-shadow:0 0 20px var(--accent-glow),inset 0 0 20px var(--accent-soft);animation:hp 1.5s ease-in-out infinite;z-index:20}
+        @keyframes hp{0%,100%{box-shadow:0 0 15px var(--accent-glow)}50%{box-shadow:0 0 30px var(--accent-glow)}}
+        .el.dim{opacity:0.12;filter:grayscale(0.8);transition:all 0.5s cubic-bezier(0.4,0,0.2,1)}
+        .el-n{position:absolute;top:2px;left:3px;font-size:0.5em;font-weight:600;opacity:0.6;z-index:1;font-family:'JetBrains Mono',monospace}
+        .el-s{font-size:1.15em;font-weight:700;z-index:1;letter-spacing:-0.02em}
+        .el-nm{font-size:0.38em;opacity:0.65;z-index:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;font-weight:500}
+        .no-metal{color:var(--cat-no-metal)}.no-metal::before{background:rgba(52,211,153,0.08)}
+        .alcalino{color:var(--cat-alcalino)}.alcalino::before{background:rgba(249,115,22,0.08)}
+        .alcalinoterreo{color:var(--cat-alcalinoterreo)}.alcalinoterreo::before{background:rgba(250,204,21,0.08)}
+        .transicion{color:var(--cat-transicion)}.transicion::before{background:rgba(96,165,250,0.08)}
+        .metal-post{color:var(--cat-metal-post)}.metal-post::before{background:rgba(167,139,250,0.08)}
+        .metaloide{color:var(--cat-metaloide)}.metaloide::before{background:rgba(192,132,252,0.08)}
+        .halogeno{color:var(--cat-halogeno)}.halogeno::before{background:rgba(248,113,113,0.08)}
+        .noble{color:var(--cat-noble)}.noble::before{background:rgba(244,114,182,0.08)}
+        .lantanido{color:var(--cat-lantanido)}.lantanido::before{background:rgba(34,211,238,0.08)}
+        .actinido{color:var(--cat-actinido)}.actinido::before{background:rgba(251,146,60,0.08)}
+        .s-res{display:none;padding:0 24px 24px;position:relative;z-index:10;max-width:1400px;margin:0 auto}
+        .s-res.act{display:block}
+        .r-card{display:flex;align-items:center;gap:16px;padding:14px 18px;background:var(--card);backdrop-filter:blur(10px);border:1px solid var(--border);border-radius:var(--r-md);cursor:pointer;transition:all var(--t-fast);margin-bottom:8px}
+        .r-card:hover{border-color:var(--accent);background:rgba(0,212,255,0.05);transform:translateX(4px)}
+        .r-sym{width:48px;height:48px;border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;background:var(--glass);border:1px solid var(--border);flex-shrink:0}
+        .r-info{flex:1;min-width:0}
+        .r-name{font-weight:600;font-size:1rem}
+        .r-meta{font-size:0.78rem;color:var(--text3);font-family:'JetBrains Mono',monospace}
+        .r-mass{font-size:0.85rem;color:var(--accent);font-weight:600;font-family:'JetBrains Mono',monospace}
+        .list-v{display:none;padding:0 24px 24px;position:relative;z-index:10;max-width:1400px;margin:0 auto}
+        .list-v.act{display:block}
+        .l-group{margin-bottom:16px}
+        .l-head{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--card);backdrop-filter:blur(10px);border:1px solid var(--border);border-radius:var(--r-md);cursor:pointer;transition:all var(--t-fast);user-select:none}
+        .l-head:hover{background:rgba(255,255,255,0.04)}
+        .l-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+        .l-title{flex:1;font-weight:600;font-size:0.9rem}
+        .l-count{font-size:0.75rem;color:var(--text3);font-family:'JetBrains Mono',monospace}
+        .l-arrow{color:var(--text3);transition:transform var(--t-base);font-size:0.8rem}
+        .l-head.open .l-arrow{transform:rotate(180deg)}
+        .l-items{display:none;padding:8px 0 0}
+        .l-items.open{display:block}
+        .l-item{display:flex;align-items:center;gap:14px;padding:12px 16px;margin:4px 0;background:var(--card);backdrop-filter:blur(10px);border:1px solid var(--border);border-radius:var(--r-md);cursor:pointer;transition:all var(--t-fast)}
+        .l-item:hover{border-color:rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);transform:translateX(4px)}
+        .l-item:active{transform:scale(0.98)}
+        .l-sym{width:42px;height:42px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.05rem;background:var(--glass);border:1px solid var(--border);flex-shrink:0}
+        .l-info{flex:1;min-width:0}
+        .l-name{font-weight:600;font-size:0.92rem}
+        .l-detail{font-size:0.75rem;color:var(--text3);font-family:'JetBrains Mono',monospace}
+        .l-mass{font-size:0.82rem;color:var(--accent);font-weight:600;font-family:'JetBrains Mono',monospace}
+        .modal-ov{position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);z-index:1000;opacity:0;pointer-events:none;transition:opacity var(--t-base)}
+        .modal-ov.act{opacity:1;pointer-events:auto}
+        .b-sheet{position:fixed;bottom:0;left:0;right:0;max-height:88vh;background:rgba(10,15,30,0.95);backdrop-filter:blur(30px) saturate(1.5);border-radius:var(--r-xl) var(--r-xl) 0 0;z-index:1001;transform:translateY(100%);transition:transform 0.5s cubic-bezier(0.32,0.72,0,1);overflow-y:auto;border-top:1px solid var(--border)}
+        .b-sheet.act{transform:translateY(0)}
+        .s-handle{padding:12px 0 8px;display:flex;justify-content:center;position:sticky;top:0;background:inherit;backdrop-filter:blur(30px);z-index:10}
+        .s-handle-bar{width:36px;height:4px;background:rgba(255,255,255,0.15);border-radius:2px}
+        .s-head{display:flex;align-items:center;gap:16px;padding:4px 24px 20px;border-bottom:1px solid rgba(255,255,255,0.06)}
+        .s-sym-box{width:68px;height:68px;border-radius:var(--r-lg);display:flex;align-items:center;justify-content:center;font-size:2.2rem;font-weight:700;background:var(--glass);border:1px solid var(--border);flex-shrink:0;position:relative;overflow:hidden}
+        .s-sym-box::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 30% 30%,rgba(255,255,255,0.1),transparent 60%)}
+        .s-title{flex:1}
+        .s-title h2{font-size:1.5rem;font-weight:700;letter-spacing:-0.02em;line-height:1.2}
+        .s-cat{font-size:0.82rem;color:var(--text3);font-weight:500;margin-top:2px}
+        .s-badge{padding:4px 12px;border-radius:20px;background:var(--accent-soft);border:1px solid rgba(0,212,255,0.2);font-size:0.8rem;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace}
+        .s-close{width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:var(--glass);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.2rem;transition:all var(--t-fast);flex-shrink:0}
+        .s-close:hover{background:rgba(255,255,255,0.08);color:var(--text);border-color:rgba(255,255,255,0.15)}
+        .s-tabs{display:flex;padding:0 24px;border-bottom:1px solid rgba(255,255,255,0.06);position:sticky;top:0;background:inherit;backdrop-filter:blur(20px);z-index:5;overflow-x:auto;scrollbar-width:none}
+        .s-tabs::-webkit-scrollbar{display:none}
+        .s-tab{padding:14px 18px;font-size:0.82rem;font-weight:500;color:var(--text3);cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;transition:all var(--t-fast);font-family:inherit;position:relative}
+        .s-tab:hover{color:var(--text2)}
+        .s-tab.act{color:var(--accent);border-bottom-color:var(--accent)}
+        .s-content{padding:20px 24px 40px}
+        .s-section{display:none}
+        .s-section.act{display:block;animation:fsi 0.3s ease}
+        @keyframes fsi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        .atom-con{display:flex;flex-direction:column;align-items:center;gap:16px;margin-bottom:20px}
+        .atom-vis{width:160px;height:160px;position:relative}
+        .atom-nuc{width:20px;height:20px;background:radial-gradient(circle at 35% 35%,#ff6b6b,#cc0000);border-radius:50%;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);box-shadow:0 0 20px rgba(255,0,0,0.4);z-index:5}
+        .atom-sh{position:absolute;top:50%;left:50%;border:1px solid rgba(255,255,255,0.1);border-radius:50%;animation:shR 15s linear infinite}
+        .atom-sh:nth-child(odd){animation-direction:reverse}
+        @keyframes shR{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+        .atom-e{position:absolute;width:7px;height:7px;background:var(--accent);border-radius:50%;box-shadow:0 0 10px var(--accent),0 0 20px var(--accent-glow);top:50%;left:50%;margin:-3.5px}
+        .cfg-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:var(--r-md);background:var(--accent-soft);border:1px solid rgba(0,212,255,0.15);font-family:'JetBrains Mono',monospace;font-size:0.85rem;color:var(--accent)}
+        .cfg-badge strong{font-weight:600}
+        .info-g{display:grid;gap:1px;background:rgba(255,255,255,0.06);border-radius:var(--r-md);overflow:hidden}
+        .info-r{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--card);font-size:0.85rem;transition:background var(--t-fast)}
+        .info-r:hover{background:rgba(255,255,255,0.03)}
+        .info-l{color:var(--text3);font-weight:500}
+        .info-v{color:var(--text);font-weight:600;text-align:right;font-family:'JetBrains Mono',monospace;font-size:0.82rem}
+        .uses-l{list-style:none;padding:0}
+        .uses-l li{padding:12px 0 12px 24px;position:relative;font-size:0.88rem;color:var(--text2);border-bottom:1px solid rgba(255,255,255,0.06);line-height:1.5}
+        .uses-l li:last-child{border-bottom:none}
+        .uses-l li::before{content:'';position:absolute;left:4px;top:50%;transform:translateY(-50%);width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent-glow)}
+        .no-res{text-align:center;padding:60px 20px}
+        .no-res-e{font-size:3.5rem;margin-bottom:12px;display:block}
+        .no-res-t{font-size:1.1rem;font-weight:600;color:var(--text2);margin-bottom:4px}
+        .no-res-s{font-size:0.85rem;color:var(--text3)}
+        .scroll-btn{position:fixed;bottom:24px;right:24px;width:44px;height:44px;border-radius:50%;background:var(--accent);color:#000;border:none;cursor:pointer;display:none;align-items:center;justify-content:center;font-size:1.2rem;z-index:50;box-shadow:var(--sh-lg),var(--sh-glow);transition:all var(--t-fast)}
+        .scroll-btn.vis{display:flex}
+        .scroll-btn:hover{transform:translateY(-2px) scale(1.05)}
+        @media(min-width:768px){.p-table{grid-template-columns:30px repeat(18,52px);grid-template-rows:28px repeat(10,52px)}.el{min-width:52px;min-height:52px}.el-s{font-size:1.2em}.list-v{display:none!important}}
+        @media(max-width:480px){.header-in{padding:12px 16px}.toolbar{padding:16px}.table-w{padding:0 12px 16px}.logo-t h1{font-size:1rem}.badge{display:none}}
+        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+        .fade-in{animation:fadeIn 0.5s ease}
+    </style>
+</head>
+<body>
+    <div class="orb"></div>
+    <div class="orb"></div>
+    <canvas id="pc"></canvas>
+
+    <header class="header">
+        <div class="header-in">
+            <div class="logo">
+                <div class="logo-icon">⚛️</div>
+                <div class="logo-t">
+                    <h1>Terminal de Detección</h1>
+                    <p>118 Elementos Interactivos</p>
+                </div>
+            </div>
+            <div class="badge">v3.0 Pro</div>
+        </div>
+    </header>
+
+    <div class="toolbar">
+        <div class="search-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="text" class="search-in" id="sI" placeholder="Buscar elemento por nombre, símbolo o número...">
+            <button class="search-cl" id="sC" onclick="cS()">✕</button>
+        </div>
+        <div class="filters" id="flt"></div>
+        <div class="controls">
+            <div class="ctrl-g">
+                <span style="font-size:0.75rem;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:0.05em">Zoom</span>
+                <button class="btn-i" onclick="zO()">−</button>
+                <span class="zoom-d" id="zL">100%</span>
+                <button class="btn-i" onclick="zI()">+</button>
+                <button class="btn-i" onclick="zR()" style="font-size:0.8rem">↺</button>
+            </div>
+            <div class="ctrl-g">
+                <button class="btn-t act" id="bT" onclick="sV('table')">📊 Tabla</button>
+                <button class="btn-t" id="bL" onclick="sV('list')">📋 Lista</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-w" id="tW">
+        <div class="p-table" id="gr"></div>
+    </div>
+
+    <div class="s-res" id="sR"></div>
+    <div class="list-v" id="lV"></div>
+
+    <div class="modal-ov" id="mO" onclick="cM()"></div>
+    <div class="b-sheet" id="bS">
+        <div class="s-handle"><div class="s-handle-bar"></div></div>
+        <div class="s-head">
+            <div class="s-sym-box" id="sSB"><span id="sS">O</span></div>
+            <div class="s-title">
+                <h2 id="sN">Oxígeno</h2>
+                <div class="s-cat" id="sC2">No metal</div>
+            </div>
+            <span class="s-badge" id="sB">#8</span>
+            <button class="s-close" onclick="cM()">✕</button>
+        </div>
+        <div class="s-tabs">
+            <div class="s-tab act" onclick="sST('info',this)">Info</div>
+            <div class="s-tab" onclick="sST('phys',this)">Físicas</div>
+            <div class="s-tab" onclick="sST('hist',this)">Historia</div>
+            <div class="s-tab" onclick="sST('uses',this)">Usos</div>
+        </div>
+        <div class="s-content">
+            <div class="s-section act" id="s-info">
+                <div class="atom-con">
+                    <div class="atom-vis" id="aV"></div>
+                    <div class="cfg-badge">Config: <strong id="sCfg">1s²</strong></div>
+                </div>
+                <div class="info-g">
+                    <div class="info-r"><span class="info-l">Número Atómico</span><span class="info-v" id="iN">8</span></div>
+                    <div class="info-r"><span class="info-l">Masa Atómica</span><span class="info-v" id="iM">15.999 u</span></div>
+                    <div class="info-r"><span class="info-l">Protones</span><span class="info-v" id="iP">8</span></div>
+                    <div class="info-r"><span class="info-l">Neutrones</span><span class="info-v" id="iNe">8</span></div>
+                    <div class="info-r"><span class="info-l">Electrones</span><span class="info-v" id="iE">8</span></div>
+                    <div class="info-r"><span class="info-l">Grupo</span><span class="info-v" id="iG">16</span></div>
+                    <div class="info-r"><span class="info-l">Período</span><span class="info-v" id="iPe">2</span></div>
+                    <div class="info-r"><span class="info-l">Bloque</span><span class="info-v" id="iBl">p</span></div>
+                    <div class="info-r"><span class="info-l">Electronegatividad</span><span class="info-v" id="iEl">3.44</span></div>
+                </div>
+            </div>
+            <div class="s-section" id="s-phys">
+                <div class="info-g">
+                    <div class="info-r"><span class="info-l">Estado</span><span class="info-v" id="pS">Gas</span></div>
+                    <div class="info-r"><span class="info-l">Punto de Fusión</span><span class="info-v" id="pM">-218.8°C</span></div>
+                    <div class="info-r"><span class="info-l">Punto de Ebullición</span><span class="info-v" id="pB">-183°C</span></div>
+                    <div class="info-r"><span class="info-l">Densidad</span><span class="info-v" id="pD">0.00143 g/cm³</span></div>
+                    <div class="info-r"><span class="info-l">Radio Atómico</span><span class="info-v" id="pR">48 pm</span></div>
+                    <div class="info-r"><span class="info-l">Energía Ionización</span><span class="info-v" id="pI">1314 kJ/mol</span></div>
+                    <div class="info-r"><span class="info-l">Afinidad Electrónica</span><span class="info-v" id="pA">141 kJ/mol</span></div>
+                </div>
+            </div>
+            <div class="s-section" id="s-hist">
+                <div class="info-g">
+                    <div class="info-r"><span class="info-l">Año</span><span class="info-v" id="hY">1774</span></div>
+                    <div class="info-r"><span class="info-l">Descubridor</span><span class="info-v" id="hD">Joseph Priestley</span></div>
+                    <div class="info-r"><span class="info-l">Origen del Nombre</span><span class="info-v" id="hO">Griego: oxys + genes</span></div>
+                </div>
+            </div>
+            <div class="s-section" id="s-uses">
+                <ul class="uses-l" id="sU"></ul>
+            </div>
+        </div>
+    </div>
+
+    <button class="scroll-btn" id="sT" onclick="sTop()">↑</button>
+
+    <script>
+        const cats={
+            "no-metal":{name:"No metal",color:"#34d399"},
+            "alcalino":{name:"Alcalino",color:"#f97316"},
+            "alcalinoterreo":{name:"Alcalinotérreo",color:"#facc15"},
+            "transicion":{name:"Transición",color:"#60a5fa"},
+            "metal-post":{name:"Metal post-T",color:"#a78bfa"},
+            "metaloide":{name:"Metaloide",color:"#c084fc"},
+            "halogeno":{name:"Halógeno",color:"#f87171"},
+            "noble":{name:"Gas noble",color:"#f472b6"},
+            "lantanido":{name:"Lantánido",color:"#22d3ee"},
+            "actinido":{name:"Actínido",color:"#fb923c"}
+        };
+
+        const DB={
+            1:{name:"Hidrógeno",symbol:"H",number:1,mass:"1.008",category:"no-metal",group:1,period:1,block:"s",electrons:1,protons:1,neutrons:0,config:"1s¹",electro:"2.20",state:"Gas",melting:"-259.16°C",boiling:"-252.87°C",density:"0.00009 g/cm³",radius:"53 pm",ionization:"1312 kJ/mol",affinity:"73 kJ/mol",year:"1766",discoverer:"Henry Cavendish",origin:"Griego: hydro (agua) + genes",uses:["Producción de amoníaco","Combustible espacial","Hidrogenación","Celdas de combustible"]},
+            2:{name:"Helio",symbol:"He",number:2,mass:"4.0026",category:"noble",group:18,period:1,block:"s",electrons:2,protons:2,neutrons:2,config:"1s²",electro:"-",state:"Gas",melting:"-272.2°C",boiling:"-268.9°C",density:"0.000178 g/cm³",radius:"31 pm",ionization:"2372 kJ/mol",affinity:"0 kJ/mol",year:"1868",discoverer:"Pierre Janssen",origin:"Griego: helios (Sol)",uses:["Enfriamiento MRI","Globos","Soldadura","Criogenia"]},
+            3:{name:"Litio",symbol:"Li",number:3,mass:"6.94",category:"alcalino",group:1,period:2,block:"s",electrons:3,protons:3,neutrons:4,config:"[He] 2s¹",electro:"0.98",state:"Sólido",melting:"180.5°C",boiling:"1342°C",density:"0.534 g/cm³",radius:"167 pm",ionization:"520 kJ/mol",affinity:"60 kJ/mol",year:"1817",discoverer:"Johan August Arfwedson",origin:"Griego: lithos (piedra)",uses:["Baterías Li-ion","Medicamentos","Aleaciones","Vidrios"]},
+            4:{name:"Berilio",symbol:"Be",number:4,mass:"9.0122",category:"alcalinoterreo",group:2,period:2,block:"s",electrons:4,protons:4,neutrons:5,config:"[He] 2s²",electro:"1.57",state:"Sólido",melting:"1287°C",boiling:"2470°C",density:"1.85 g/cm³",radius:"112 pm",ionization:"899 kJ/mol",affinity:"0 kJ/mol",year:"1798",discoverer:"Louis Nicolas Vauquelin",origin:"Griego: beryllos",uses:["Ventanas RX","Aleaciones aeroespaciales","Reactores nucleares"]},
+            5:{name:"Boro",symbol:"B",number:5,mass:"10.81",category:"metaloide",group:13,period:2,block:"p",electrons:5,protons:5,neutrons:6,config:"[He] 2s² 2p¹",electro:"2.04",state:"Sólido",melting:"2076°C",boiling:"3927°C",density:"2.34 g/cm³",radius:"87 pm",ionization:"801 kJ/mol",affinity:"27 kJ/mol",year:"1808",discoverer:"Joseph Gay-Lussac",origin:"Árabe: buraq",uses:["Fibra vidrio","Detergentes","Aislantes","Semiconductores"]},
+            6:{name:"Carbono",symbol:"C",number:6,mass:"12.011",category:"no-metal",group:14,period:2,block:"p",electrons:6,protons:6,neutrons:6,config:"[He] 2s² 2p²",electro:"2.55",state:"Sólido",melting:"3550°C",boiling:"4027°C",density:"2.267 g/cm³",radius:"67 pm",ionization:"1086 kJ/mol",affinity:"154 kJ/mol",year:"Prehistórico",discoverer:"Antigüedad",origin:"Latín: carbo",uses:["Base vida orgánica","Acero","Diamantes","Filtros"]},
+            7:{name:"Nitrógeno",symbol:"N",number:7,mass:"14.007",category:"no-metal",group:15,period:2,block:"p",electrons:7,protons:7,neutrons:7,config:"[He] 2s² 2p³",electro:"3.04",state:"Gas",melting:"-210°C",boiling:"-196°C",density:"0.00125 g/cm³",radius:"56 pm",ionization:"1402 kJ/mol",affinity:"7 kJ/mol",year:"1772",discoverer:"Daniel Rutherford",origin:"Griego: nitron + genes",uses:["Fertilizantes","Atmósfera inerte","Criogenia","Explosivos"]},
+            8:{name:"Oxígeno",symbol:"O",number:8,mass:"15.999",category:"no-metal",group:16,period:2,block:"p",electrons:8,protons:8,neutrons:8,config:"[He] 2s² 2p⁴",electro:"3.44",state:"Gas",melting:"-218.8°C",boiling:"-183°C",density:"0.00143 g/cm³",radius:"48 pm",ionization:"1314 kJ/mol",affinity:"141 kJ/mol",year:"1774",discoverer:"Joseph Priestley",origin:"Griego: oxys + genes",uses:["Respiración","Acero","Tratamiento aguas","Combustión"]},
+            9:{name:"Flúor",symbol:"F",number:9,mass:"18.998",category:"halogeno",group:17,period:2,block:"p",electrons:9,protons:9,neutrons:10,config:"[He] 2s² 2p⁵",electro:"3.98",state:"Gas",melting:"-219.7°C",boiling:"-188.1°C",density:"0.0017 g/cm³",radius:"42 pm",ionization:"1681 kJ/mol",affinity:"328 kJ/mol",year:"1886",discoverer:"Henri Moissan",origin:"Latín: fluere",uses:["Pasta dental","Teflón","Refrigerantes","Uranio enriquecido"]},
+            10:{name:"Neón",symbol:"Ne",number:10,mass:"20.180",category:"noble",group:18,period:2,block:"p",electrons:10,protons:10,neutrons:10,config:"[He] 2s² 2p⁶",electro:"-",state:"Gas",melting:"-248.6°C",boiling:"-246.1°C",density:"0.0009 g/cm³",radius:"38 pm",ionization:"2081 kJ/mol",affinity:"0 kJ/mol",year:"1898",discoverer:"William Ramsay",origin:"Griego: neos",uses:["Letreros luminosos","Láseres","Indicadores","Criogenia"]},
+            11:{name:"Sodio",symbol:"Na",number:11,mass:"22.990",category:"alcalino",group:1,period:3,block:"s",electrons:11,protons:11,neutrons:12,config:"[Ne] 3s¹",electro:"0.93",state:"Sólido",melting:"97.7°C",boiling:"883°C",density:"0.97 g/cm³",radius:"190 pm",ionization:"496 kJ/mol",affinity:"53 kJ/mol",year:"1807",discoverer:"Humphry Davy",origin:"Árabe: suda",uses:["Sal NaCl","Lámparas sodio","Jabones","Refrigerante nuclear"]},
+            12:{name:"Magnesio",symbol:"Mg",number:12,mass:"24.305",category:"alcalinoterreo",group:2,period:3,block:"s",electrons:12,protons:12,neutrons:12,config:"[Ne] 3s²",electro:"1.31",state:"Sólido",melting:"650°C",boiling:"1090°C",density:"1.74 g/cm³",radius:"145 pm",ionization:"738 kJ/mol",affinity:"0 kJ/mol",year:"1755",discoverer:"Joseph Black",origin:"Magnesia",uses:["Aleaciones ligeras","Fuegos artificiales","Antiácidos","Fertilizantes"]},
+            13:{name:"Aluminio",symbol:"Al",number:13,mass:"26.982",category:"metal-post",group:13,period:3,block:"p",electrons:13,protons:13,neutrons:14,config:"[Ne] 3s² 3p¹",electro:"1.61",state:"Sólido",melting:"660°C",boiling:"2519°C",density:"2.70 g/cm³",radius:"118 pm",ionization:"578 kJ/mol",affinity:"43 kJ/mol",year:"1825",discoverer:"Hans Christian Ørsted",origin:"Latín: alumen",uses:["Envases","Aviación","Construcción","Cableado"]},
+            14:{name:"Silicio",symbol:"Si",number:14,mass:"28.085",category:"metaloide",group:14,period:3,block:"p",electrons:14,protons:14,neutrons:14,config:"[Ne] 3s² 3p²",electro:"1.90",state:"Sólido",melting:"1414°C",boiling:"3265°C",density:"2.33 g/cm³",radius:"111 pm",ionization:"786 kJ/mol",affinity:"134 kJ/mol",year:"1824",discoverer:"Jöns Jacob Berzelius",origin:"Latín: silex",uses:["Chips","Vidrio","Paneles solares","Siliconas"]},
+            15:{name:"Fósforo",symbol:"P",number:15,mass:"30.974",category:"no-metal",group:15,period:3,block:"p",electrons:15,protons:15,neutrons:16,config:"[Ne] 3s² 3p³",electro:"2.19",state:"Sólido",melting:"44°C",boiling:"281°C",density:"1.82 g/cm³",radius:"98 pm",ionization:"1012 kJ/mol",affinity:"72 kJ/mol",year:"1669",discoverer:"Hennig Brand",origin:"Griego: phosphoros",uses:["Fertilizantes","Detergentes","Cerillas","ADN/ATP"]},
+            16:{name:"Azufre",symbol:"S",number:16,mass:"32.06",category:"no-metal",group:16,period:3,block:"p",electrons:16,protons:16,neutrons:16,config:"[Ne] 3s² 3p⁴",electro:"2.58",state:"Sólido",melting:"115°C",boiling:"445°C",density:"2.07 g/cm³",radius:"88 pm",ionization:"1000 kJ/mol",affinity:"200 kJ/mol",year:"Prehistórico",discoverer:"Antigüedad",origin:"Sánscrito: sulvere",uses:["Ácido sulfúrico","Vulcanización","Fungicidas","Pólvora"]},
+            17:{name:"Cloro",symbol:"Cl",number:17,mass:"35.45",category:"halogeno",group:17,period:3,block:"p",electrons:17,protons:17,neutrons:18,config:"[Ne] 3s² 3p⁵",electro:"3.16",state:"Gas",melting:"-101.5°C",boiling:"-34°C",density:"0.0032 g/cm³",radius:"79 pm",ionization:"1251 kJ/mol",affinity:"349 kJ/mol",year:"1774",discoverer:"Carl Wilhelm Scheele",origin:"Griego: chloros",uses:["Purificación agua","PVC","Desinfectantes","Blanqueadores"]},
+            18:{name:"Argón",symbol:"Ar",number:18,mass:"39.948",category:"noble",group:18,period:3,block:"p",electrons:18,protons:18,neutrons:22,config:"[Ne] 3s² 3p⁶",electro:"-",state:"Gas",melting:"-189°C",boiling:"-186°C",density:"0.00178 g/cm³",radius:"71 pm",ionization:"1521 kJ/mol",affinity:"0 kJ/mol",year:"1894",discoverer:"Lord Rayleigh",origin:"Griego: argos",uses:["Soldadura","Bombillas","Atmósfera protectora","Láseres"]},
+            19:{name:"Potasio",symbol:"K",number:19,mass:"39.098",category:"alcalino",group:1,period:4,block:"s",electrons:19,protons:19,neutrons:20,config:"[Ar] 4s¹",electro:"0.82",state:"Sólido",melting:"63°C",boiling:"759°C",density:"0.86 g/cm³",radius:"243 pm",ionization:"419 kJ/mol",affinity:"48 kJ/mol",year:"1807",discoverer:"Humphry Davy",origin:"Árabe: al qaljah",uses:["Fertilizantes","Jabones","Pólvora","Nutrición celular"]},
+            20:{name:"Calcio",symbol:"Ca",number:20,mass:"40.078",category:"alcalinoterreo",group:2,period:4,block:"s",electrons:20,protons:20,neutrons:20,config:"[Ar] 4s²",electro:"1.00",state:"Sólido",melting:"842°C",boiling:"1484°C",density:"1.55 g/cm³",radius:"194 pm",ionization:"590 kJ/mol",affinity:"2.4 kJ/mol",year:"1808",discoverer:"Humphry Davy",origin:"Latín: calx",uses:["Huesos/dientes","Cemento","Acero","Antiácidos"]},
+            21:{name:"Escandio",symbol:"Sc",number:21,mass:"44.956",category:"transicion",group:3,period:4,block:"d",electrons:21,protons:21,neutrons:24,config:"[Ar] 3d¹ 4s²",electro:"1.36",state:"Sólido",melting:"1541°C",boiling:"2836°C",density:"2.99 g/cm³",radius:"184 pm",ionization:"633 kJ/mol",affinity:"18 kJ/mol",year:"1879",discoverer:"Lars Fredrik Nilson",origin:"Escandinavia",uses:["Aleaciones Al","Lámparas alta intensidad","Investigación"]},
+            22:{name:"Titanio",symbol:"Ti",number:22,mass:"47.867",category:"transicion",group:4,period:4,block:"d",electrons:22,protons:22,neutrons:26,config:"[Ar] 3d² 4s²",electro:"1.54",state:"Sólido",melting:"1668°C",boiling:"3287°C",density:"4.51 g/cm³",radius:"176 pm",ionization:"659 kJ/mol",affinity:"8 kJ/mol",year:"1791",discoverer:"William Gregor",origin:"Titanes griegos",uses:["Prótesis","Aviación","Pigmentos blancos","Aleaciones"]},
+            23:{name:"Vanadio",symbol:"V",number:23,mass:"50.942",category:"transicion",group:5,period:4,block:"d",electrons:23,protons:23,neutrons:28,config:"[Ar] 3d³ 4s²",electro:"1.63",state:"Sólido",melting:"1910°C",boiling:"3407°C",density:"6.11 g/cm³",radius:"171 pm",ionization:"651 kJ/mol",affinity:"51 kJ/mol",year:"1801",discoverer:"Andrés Manuel del Río",origin:"Vanadis nórdica",uses:["Acero herramientas","Catalizadores","Baterías flujo","Aleaciones"]},
+            24:{name:"Cromo",symbol:"Cr",number:24,mass:"51.996",category:"transicion",group:6,period:4,block:"d",electrons:24,protons:24,neutrons:28,config:"[Ar] 3d⁵ 4s¹",electro:"1.66",state:"Sólido",melting:"1907°C",boiling:"2671°C",density:"7.15 g/cm³",radius:"166 pm",ionization:"653 kJ/mol",affinity:"64 kJ/mol",year:"1797",discoverer:"Louis Nicolas Vauquelin",origin:"Griego: chroma",uses:["Acero inoxidable","Cromado","Pigmentos","Curtido cuero"]},
+            25:{name:"Manganeso",symbol:"Mn",number:25,mass:"54.938",category:"transicion",group:7,period:4,block:"d",electrons:25,protons:25,neutrons:30,config:"[Ar] 3d⁵ 4s²",electro:"1.55",state:"Sólido",melting:"1246°C",boiling:"2061°C",density:"7.44 g/cm³",radius:"161 pm",ionization:"717 kJ/mol",affinity:"0 kJ/mol",year:"1774",discoverer:"Johan Gottlieb Gahn",origin:"Magnesia",uses:["Acero","Baterías alcalinas","Pigmentos","Fertilizantes"]},
+            26:{name:"Hierro",symbol:"Fe",number:26,mass:"55.845",category:"transicion",group:8,period:4,block:"d",electrons:26,protons:26,neutrons:30,config:"[Ar] 3d⁶ 4s²",electro:"1.83",state:"Sólido",melting:"1538°C",boiling:"2862°C",density:"7.87 g/cm³",radius:"156 pm",ionization:"762 kJ/mol",affinity:"16 kJ/mol",year:"Prehistórico",discoverer:"Antigüedad",origin:"Latín: ferrum",uses:["Acero/construcción","Hemoglobina","Catalizadores","Imanes"]},
+            27:{name:"Cobalto",symbol:"Co",number:27,mass:"58.933",category:"transicion",group:9,period:4,block:"d",electrons:27,protons:27,neutrons:32,config:"[Ar] 3d⁷ 4s²",electro:"1.88",state:"Sólido",melting:"1495°C",boiling:"2927°C",density:"8.86 g/cm³",radius:"152 pm",ionization:"760 kJ/mol",affinity:"64 kJ/mol",year:"1735",discoverer:"Georg Brandt",origin:"Alemán: kobold",uses:["Baterías Li-ion","Imanes","Pigmentos azules","Aleaciones"]},
+            28:{name:"Níquel",symbol:"Ni",number:28,mass:"58.693",category:"transicion",group:10,period:4,block:"d",electrons:28,protons:28,neutrons:31,config:"[Ar] 3d⁸ 4s²",electro:"1.91",state:"Sólido",melting:"1455°C",boiling:"2913°C",density:"8.91 g/cm³",radius:"149 pm",ionization:"737 kJ/mol",affinity:"112 kJ/mol",year:"1751",discoverer:"Axel Cronstedt",origin:"Alemán: kupfernickel",uses:["Acero inoxidable","Baterías","Monedas","Catalizadores"]},
+            29:{name:"Cobre",symbol:"Cu",number:29,mass:"63.546",category:"transicion",group:11,period:4,block:"d",electrons:29,protons:29,neutrons:35,config:"[Ar] 3d¹⁰ 4s¹",electro:"1.90",state:"Sólido",melting:"1085°C",boiling:"2562°C",density:"8.96 g/cm³",radius:"145 pm",ionization:"745 kJ/mol",affinity:"118 kJ/mol",year:"Prehistórico",discoverer:"Antigüedad",origin:"Latín: cuprum",uses:["Cableado eléctrico","Tuberías","Bronce/latón","Antimicrobiano"]},
+            30:{name:"Zinc",symbol:"Zn",number:30,mass:"65.38",category:"transicion",group:12,period:4,block:"d",electrons:30,protons:30,neutrons:35,config:"[Ar] 3d¹⁰ 4s²",electro:"1.65",state:"Sólido",melting:"420°C",boiling:"907°C",density:"7.13 g/cm³",radius:"142 pm",ionization:"906 kJ/mol",affinity:"0 kJ/mol",year:"Prehistórico",discoverer:"Antigüedad",origin:"Alemán: zinke",uses:["Galvanización","Pilas","Latón","Suplementos"]},
+            31:{name:"Galio",symbol:"Ga",number:31,mass:"69.723",category:"metal-post",group:13,period:4,block:"p",electrons:31,protons:31,neutrons:39,config:"[Ar] 3d¹⁰ 4s² 4p¹",electro:"1.81",state:"Sólido",melting:"30°C",boiling:"2204°C",density:"5.91 g/cm³",radius:"136 pm",ionization:"579 kJ/mol",affinity:"29 kJ/mol",year:"1875",discoverer:"Lecoq de Boisbaudran",origin:"Gallia (Francia)",uses:["Semiconductores","LEDs","Termómetros","Celdas solares"]},
+            32:{name:"Germanio",symbol:"Ge",number:32,mass:"72.630",category:"metaloide",group:14,period:4,block:"p",electrons:32,protons:32,neutrons:41,config:"[Ar] 3d¹⁰ 4s² 4p²",electro:"2.01",state:"Sólido",melting:"938°C",boiling:"2833°C",density:"5.32 g/cm³",radius:"125 pm",ionization:"762 kJ/mol",affinity:"119 kJ/mol",year:"1886",discoverer:"Clemens Winkler",origin:"Germania",uses:["Fibra óptica","Transistores","Lentes IR","Catalizadores"]},
+            33:{name:"Arsénico",symbol:"As",number:33,mass:"74.922",category:"metaloide",group:15,period:4,block:"p",electrons:33,protons:33,neutrons:42,config:"[Ar] 3d¹⁰ 4s² 4p³",electro:"2.18",state:"Sólido",melting:"817°C",boiling:"614°C",density:"5.73 g/cm³",radius:"114 pm",ionization:"947 kJ/mol",affinity:"78 kJ/mol",year:"c.1250",discoverer:"Alberto Magno",origin:"Griego: arsenikon",uses:["Semiconductores","Preservantes madera","Aleaciones","Medicina"]},
+            34:{name:"Selenio",symbol:"Se",number:34,mass:"78.971",category:"no-metal",group:16,period:4,block:"p",electrons:34,protons:34,neutrons:45,config:"[Ar] 3d¹⁰ 4s² 4p⁴",electro:"2.55",state:"Sólido",melting:"221°C",boiling:"685°C",density:"4.81 g/cm³",radius:"103 pm",ionization:"941 kJ/mol",affinity:"195 kJ/mol",year:"1817",discoverer:"Jöns Jacob Berzelius",origin:"Griego: selene",uses:["Celdas solares","Fotocopiadoras","Suplementos","Vidrio"]},
+            35:{name:"Bromo",symbol:"Br",number:35,mass:"79.904",category:"halogeno",group:17,period:4,block:"p",electrons:35,protons:35,neutrons:45,config:"[Ar] 3d¹⁰ 4s² 4p⁵",electro:"2.96",state:"Líquido",melting:"-7°C",boiling:"59°C",density:"3.12 g/cm³",radius:"94 pm",ionization:"1140 kJ/mol",affinity:"325 kJ/mol",year:"1826",discoverer:"Antoine Balard",origin:"Griego: bromos",uses:["Retardantes llama","Fotografía","Medicamentos","Desinfectantes"]},
+            36:{name:"Kriptón",symbol:"Kr",number:36,mass:"83.798",category:"noble",group:18,period:4,block:"p",electrons:36,protons:36,neutrons:48,config:"[Ar] 3d¹⁰ 4s² 4p⁶",electro:"3.00",state:"Gas",melting:"-157°C",boiling:"-153°C",density:"0.0037 g/cm³",radius:"88 pm",ionization:"1351 kJ/mol",affinity:"0 kJ/mol",year:"1898",discoverer:"William Ramsay",origin:"Griego: kryptos",uses:["Iluminación","Láseres","Aislamiento","Fotografía"]},
+            37:{name:"Rubidio",symbol:"Rb",number:37,mass:"85.468",category:"alcalino",group:1,period:5,block:"s",electrons:37,protons:37,neutrons:48,config:"[Kr] 5s¹",electro:"0.82",state:"Sólido",melting:"39°C",boiling:"688°C",density:"1.53 g/cm³",radius:"265 pm",ionization:"403 kJ/mol",affinity:"47 kJ/mol",year:"1861",discoverer:"Robert Bunsen",origin:"Latín: rubidus",uses:["Celdas solares","Relojes atómicos","Fuegos artificiales","Investigación"]},
+            38:{name:"Estroncio",symbol:"Sr",number:38,mass:"87.62",category:"alcalinoterreo",group:2,period:5,block:"s",electrons:38,protons:38,neutrons:50,config:"[Kr] 5s²",electro:"0.95",state:"Sólido",melting:"777°C",boiling:"1377°C",density:"2.64 g/cm³",radius:"219 pm",ionization:"549 kJ/mol",affinity:"5 kJ/mol",year:"1790",discoverer:"Adair Crawford",origin:"Strontian",uses:["Fuegos rojos","Imanes","Cerámica","Medicina nuclear"]},
+            39:{name:"Itrio",symbol:"Y",number:39,mass:"88.906",category:"transicion",group:3,period:5,block:"d",electrons:39,protons:39,neutrons:50,config:"[Kr] 4d¹ 5s²",electro:"1.22",state:"Sólido",melting:"1526°C",boiling:"3345°C",density:"4.47 g/cm³",radius:"212 pm",ionization:"600 kJ/mol",affinity:"30 kJ/mol",year:"1794",discoverer:"Johan Gadolin",origin:"Ytterby",uses:["LEDs","Láseres","Superconductores","Catalizadores"]},
+            40:{name:"Circonio",symbol:"Zr",number:40,mass:"91.224",category:"transicion",group:4,period:5,block:"d",electrons:40,protons:40,neutrons:51,config:"[Kr] 4d² 5s²",electro:"1.33",state:"Sólido",melting:"1855°C",boiling:"4409°C",density:"6.52 g/cm³",radius:"206 pm",ionization:"640 kJ/mol",affinity:"41 kJ/mol",year:"1789",discoverer:"Martin Klaproth",origin:"Persa: zargun",uses:["Reactores nucleares","Cerámica dental","Aleaciones","Desodorantes"]},
+            41:{name:"Niobio",symbol:"Nb",number:41,mass:"92.906",category:"transicion",group:5,period:5,block:"d",electrons:41,protons:41,neutrons:52,config:"[Kr] 4d⁴ 5s¹",electro:"1.60",state:"Sólido",melting:"2477°C",boiling:"4744°C",density:"8.57 g/cm³",radius:"198 pm",ionization:"652 kJ/mol",affinity:"86 kJ/mol",year:"1801",discoverer:"Charles Hatchett",origin:"Niobe",uses:["Superconductores","Acero","Joyas","MRI"]},
+            42:{name:"Molibdeno",symbol:"Mo",number:42,mass:"95.95",category:"transicion",group:6,period:5,block:"d",electrons:42,protons:42,neutrons:54,config:"[Kr] 4d⁵ 5s¹",electro:"2.16",state:"Sólido",melting:"2623°C",boiling:"4639°C",density:"10.22 g/cm³",radius:"190 pm",ionization:"684 kJ/mol",affinity:"72 kJ/mol",year:"1781",discoverer:"Carl Wilhelm Scheele",origin:"Griego: molybdos",uses:["Acero alta resistencia","Lubricantes","Catalizadores","Electrónica"]},
+            43:{name:"Tecnecio",symbol:"Tc",number:43,mass:"98",category:"transicion",group:7,period:5,block:"d",electrons:43,protons:43,neutrons:55,config:"[Kr] 4d⁵ 5s²",electro:"1.90",state:"Sólido",melting:"2157°C",boiling:"4265°C",density:"11.5 g/cm³",radius:"183 pm",ionization:"702 kJ/mol",affinity:"53 kJ/mol",year:"1937",discoverer:"Carlo Perrier",origin:"Griego: technetos",uses:["Medicina nuclear","Corrosión","Investigación","Radioterapia"]},
+            44:{name:"Rutenio",symbol:"Ru",number:44,mass:"101.07",category:"transicion",group:8,period:5,block:"d",electrons:44,protons:44,neutrons:57,config:"[Kr] 4d⁷ 5s¹",electro:"2.20",state:"Sólido",melting:"2334°C",boiling:"4150°C",density:"12.37 g/cm³",radius:"178 pm",ionization:"710 kJ/mol",affinity:"101 kJ/mol",year:"1844",discoverer:"Karl Ernst Claus",origin:"Ruthenia",uses:["Catalizadores","Electrónica","Aleaciones","Pilas combustible"]},
+            45:{name:"Rodio",symbol:"Rh",number:45,mass:"102.91",category:"transicion",group:9,period:5,block:"d",electrons:45,protons:45,neutrons:58,config:"[Kr] 4d⁸ 5s¹",electro:"2.28",state:"Sólido",melting:"1964°C",boiling:"3695°C",density:"12.41 g/cm³",radius:"173 pm",ionization:"720 kJ/mol",affinity:"110 kJ/mol",year:"1803",discoverer:"William Hyde Wollaston",origin:"Griego: rhodon",uses:["Convertidores catalíticos","Joyas","Espejos","Contactos"]},
+            46:{name:"Paladio",symbol:"Pd",number:46,mass:"106.42",category:"transicion",group:10,period:5,block:"d",electrons:46,protons:46,neutrons:60,config:"[Kr] 4d¹⁰",electro:"2.20",state:"Sólido",melting:"1555°C",boiling:"2963°C",density:"12.02 g/cm³",radius:"169 pm",ionization:"804 kJ/mol",affinity:"54 kJ/mol",year:"1803",discoverer:"William Hyde Wollaston",origin:"Palas (asteroide)",uses:["Catalizadores","Joyas","Electrónica","Hidrógeno"]},
+            47:{name:"Plata",symbol:"Ag",number:47,mass:"107.87",category:"transicion",group:11,period:5,block:"d",electrons:47,protons:47,neutrons:61,config:"[Kr] 4d¹⁰ 5s¹",electro:"1.93",state:"Sólido",melting:"962°C",boiling:"2162°C",density:"10.49 g/cm³",radius:"165 pm",ionization:"731 kJ/mol",affinity:"126 kJ/mol",year:"Prehistórico",discoverer:"Antigüedad",origin:"Anglosajón: seolfor",uses:["Joyas","Fotografía","Electrónica","Antibacteriano"]},
+            48:{name:"Cadmio",symbol:"Cd",number:48,mass:"112.41",category:"transicion",group:12,period:5,block:"d",electrons:48,protons:48,neutrons:64,config:"[Kr] 4d¹⁰ 5s²",electro:"1.69",state:"Sólido",melting:"321°C",boiling:"767°C",density:"8.65 g/cm³",radius:"161 pm",ionization:"867 kJ/mol",affinity:"0 kJ/mol",year:"1817",discoverer:"Friedrich Stromeyer",origin:"Latín: cadmia",uses:["Baterías Ni-Cd","Pigmentos","Estabilizantes","Control nuclear"]},
+            49:{name:"Indio",symbol:"In",number:49,mass:"114.82",category:"metal-post",group:13,period:5,block:"p",electrons:49,protons:49,neutrons:66,config:"[Kr] 4d¹⁰ 5s² 5p¹",electro:"1.78",state:"Sólido",melting:"157°C",boiling:"2072°C",density:"7.31 g/cm³",radius:"156 pm",ionization:"558 kJ/mol",affinity:"29 kJ/mol",year:"1863",discoverer:"Ferdinand Reich",origin:"Índigo",uses:["Pantallas táctiles","Semiconductores","Aleaciones","LEDs"]},
+            50:{name:"Estaño",symbol:"Sn",number:50,mass:"118.71",category:"metal-post",group:14,period:5,block:"p",electrons:50,protons:50,neutrons:69,config:"[Kr] 4d¹⁰ 5s² 5p²",electro:"1.96",state:"Sólido",melting:"232°C",boiling:"2602°C",density:"7.29 g/cm³",radius:"145 pm",ionization:"709 kJ/mol",affinity:"107 kJ/mol",year:"Prehistórico",discoverer:"Antigüedad",origin:"Anglosajón: tin",uses:["Soldadura","Envases","Bronce","Revestimientos"]},
+            51:{name:"Antimonio",symbol:"Sb",number:51,mass:"121.76",category:"metaloide",group:15,period:5,block:"p",electrons:51,protons:51,neutrons:71,config:"[Kr] 4d¹⁰ 5s² 5p³",electro:"2.05",state:"Sólido",melting:"631°C",boiling:"1587°C",density:"6.69 g/cm³",radius:"133 pm",ionization:"834 kJ/mol",affinity:"103 kJ/mol",year:"Prehistórico",discoverer:"Antigüedad",origin:"Griego: anti+monos",uses:["Retardantes llama","Aleaciones","Semiconductores","Baterías"]},
+            52:{name:"Telurio",symbol:"Te",number:52,mass:"127.60",category:"metaloide",group:16,period:5,block:"p",electrons:52,protons:52,neutrons:76,config:"[Kr] 4d¹⁰ 5s² 5p⁴",electro:"2.10",state:"Sólido",melting:"450°C",boiling:"988°C",density:"6.23 g/cm³",radius:"123 pm",ionization:"869 kJ/mol",affinity:"190 kJ/mol",year:"1782",discoverer:"Franz-Joseph Müller",origin:"Latín: tellus",uses:["Celdas solares","Aleaciones","Semiconductores","Catalizadores"]},
+            53:{name:"Yodo",symbol:"I",number:53,mass:"126.90",category:"halogeno",group:17,period:5,block:"p",electrons:53,protons:53,neutrons:74,config:"[Kr] 4d¹⁰ 5s² 5p⁵",electro:"2.66",state:"Sólido",melting:"114°C",boiling:"184°C",density:"4.93 g/cm³",radius:"115 pm",ionization:"1008 kJ/mol",affinity:"295 kJ/mol",year:"1811",discoverer:"Bernard Courtois",origin:"Griego: iodes",uses:["Desinfectantes","Sal yodada","Rayos X","Medicamentos"]},
+            54:{name:"Xenón",symbol:"Xe",number:54,mass:"131.29",category:"noble",group:18,period:5,block:"p",electrons:54,protons:54,neutrons:77,config:"[Kr] 4d¹⁰ 5s² 5p⁶",electro:"2.60",state:"Gas",melting:"-112°C",boiling:"-108°C",density:"0.0059 g/cm³",radius:"108 pm",ionization:"1170 kJ/mol",affinity:"0 kJ/mol",year:"1898",discoverer:"William Ramsay",origin:"Griego: xenos",uses:["Luces flash","Láseres","Anestesia","Propulsión iónica"]},
+            55:{name:"Cesio",symbol:"Cs",number:55,mass:"132.91",category:"alcalino",group:1,period:6,block:"s",electrons:55,protons:55,neutrons:78,config:"[Xe] 6s¹",electro:"0.79",state:"Sólido",melting:"28°C",boiling:"671°C",density:"1.87 g/cm³",radius:"298 pm",ionization:"376 kJ/mol",affinity:"46 kJ/mol",year:"1860",discoverer:"Robert Bunsen",origin:"Latín: caesius",uses:["Relojes atómicos","Celdas solares","Perforación","GPS"]},
+            56:{name:"Bario",symbol:"Ba",number:56,mass:"137.33",category:"alcalinoterreo",group:2,period:6,block:"s",electrons:56,protons:56,neutrons:81,config:"[Xe] 6s²",electro:"0.89",state:"Sólido",melting:"727°C",boiling:"1845°C",density:"3.62 g/cm³",radius:"253 pm",ionization:"503 kJ/mol",affinity:"14 kJ/mol",year:"1774",discoverer:"Carl Wilhelm Scheele",origin:"Griego: barys",uses:["Contraste RX","Fuegos artificiales","Vidrio","Perforación"]},
+            57:{name:"Lantano",symbol:"La",number:57,mass:"138.91",category:"lantanido",group:3,period:6,block:"f",electrons:57,protons:57,neutrons:82,config:"[Xe] 5d¹ 6s²",electro:"1.10",state:"Sólido",melting:"920°C",boiling:"3464°C",density:"6.15 g/cm³",radius:"195 pm",ionization:"538 kJ/mol",affinity:"48 kJ/mol",year:"1839",discoverer:"Carl Gustaf Mosander",origin:"Griego: lanthanein",uses:["Catalizadores","Baterías híbridas","Vidrio óptico","Imanes"]},
+            58:{name:"Cerio",symbol:"Ce",number:58,mass:"140.12",category:"lantanido",group:3,period:6,block:"f",electrons:58,protons:58,neutrons:82,config:"[Xe] 4f¹ 5d¹ 6s²",electro:"1.12",state:"Sólido",melting:"799°C",boiling:"3443°C",density:"6.77 g/cm³",radius:"185 pm",ionization:"534 kJ/mol",affinity:"50 kJ/mol",year:"1803",discoverer:"Jöns Jacob Berzelius",origin:"Ceres",uses:["Catalizadores auto","Vidrio pulido","Imanes","Encendedores"]},
+            59:{name:"Praseodimio",symbol:"Pr",number:59,mass:"140.91",category:"lantanido",group:3,period:6,block:"f",electrons:59,protons:59,neutrons:82,config:"[Xe] 4f³ 6s²",electro:"1.13",state:"Sólido",melting:"931°C",boiling:"3520°C",density:"6.77 g/cm³",radius:"185 pm",ionization:"527 kJ/mol",affinity:"50 kJ/mol",year:"1885",discoverer:"Carl Auer von Welsbach",origin:"Griego: prasios+didymos",uses:["Imanes","Vidrio verde","Aleaciones","Láseres"]},
+            60:{name:"Neodimio",symbol:"Nd",number:60,mass:"144.24",category:"lantanido",group:3,period:6,block:"f",electrons:60,protons:60,neutrons:84,config:"[Xe] 4f⁴ 6s²",electro:"1.14",state:"Sólido",melting:"1021°C",boiling:"3074°C",density:"7.01 g/cm³",radius:"181 pm",ionization:"533 kJ/mol",affinity:"50 kJ/mol",year:"1885",discoverer:"Carl Auer von Welsbach",origin:"Griego: neos+didymos",uses:["Imanes superpotentes","Láseres","Vidrio","Auriculares"]},
+            61:{name:"Prometio",symbol:"Pm",number:61,mass:"145",category:"lantanido",group:3,period:6,block:"f",electrons:61,protons:61,neutrons:84,config:"[Xe] 4f⁵ 6s²",electro:"-",state:"Sólido",melting:"1042°C",boiling:"3000°C",density:"7.26 g/cm³",radius:"183 pm",ionization:"540 kJ/mol",affinity:"50 kJ/mol",year:"1945",discoverer:"Jacob A. Marinsky",origin:"Prometeo",uses:["Pilas nucleares","Luminiscencia","Investigación","Medidores"]},
+            62:{name:"Samario",symbol:"Sm",number:62,mass:"150.36",category:"lantanido",group:3,period:6,block:"f",electrons:62,protons:62,neutrons:88,config:"[Xe] 4f⁶ 6s²",electro:"1.17",state:"Sólido",melting:"1074°C",boiling:"1794°C",density:"7.52 g/cm³",radius:"180 pm",ionization:"545 kJ/mol",affinity:"50 kJ/mol",year:"1879",discoverer:"Lecoq de Boisbaudran",origin:"Samarskite",uses:["Imanes","Reactores","Láseres","Canceroterapia"]},
+            63:{name:"Europio",symbol:"Eu",number:63,mass:"151.96",category:"lantanido",group:3,period:6,block:"f",electrons:63,protons:63,neutrons:89,config:"[Xe] 4f⁷ 6s²",electro:"-",state:"Sólido",melting:"822°C",boiling:"1529°C",density:"5.24 g/cm³",radius:"204 pm",ionization:"547 kJ/mol",affinity:"50 kJ/mol",year:"1901",discoverer:"Eugène Demarçay",origin:"Europa",uses:["Fósforos rojos","Anti-falsificación","LEDs","Investigación"]},
+            64:{name:"Gadolinio",symbol:"Gd",number:64,mass:"157.25",category:"lantanido",group:3,period:6,block:"f",electrons:64,protons:64,neutrons:93,config:"[Xe] 4f⁷ 5d¹ 6s²",electro:"1.20",state:"Sólido",melting:"1313°C",boiling:"3273°C",density:"7.90 g/cm³",radius:"198 pm",ionization:"593 kJ/mol",affinity:"50 kJ/mol",year:"1880",discoverer:"Jean Charles Galissard",origin:"Gadolinita",uses:["Contraste MRI","Imanes","Reactores","Aleaciones"]},
+            65:{name:"Terbio",symbol:"Tb",number:65,mass:"158.93",category:"lantanido",group:3,period:6,block:"f",electrons:65,protons:65,neutrons:94,config:"[Xe] 4f⁹ 6s²",electro:"-",state:"Sólido",melting:"1356°C",boiling:"3230°C",density:"8.23 g/cm³",radius:"196 pm",ionization:"566 kJ/mol",affinity:"50 kJ/mol",year:"1843",discoverer:"Carl Gustaf Mosander",origin:"Ytterby",uses:["Fósforos verdes","Magnéticos","Láseres","Aleaciones"]},
+            66:{name:"Disprosio",symbol:"Dy",number:66,mass:"162.50",category:"lantanido",group:3,period:6,block:"f",electrons:66,protons:66,neutrons:97,config:"[Xe] 4f¹⁰ 6s²",electro:"1.22",state:"Sólido",melting:"1412°C",boiling:"2567°C",density:"8.55 g/cm³",radius:"194 pm",ionization:"573 kJ/mol",affinity:"50 kJ/mol",year:"1886",discoverer:"Lecoq de Boisbaudran",origin:"Griego: dysprositos",uses:["Imanes","Reactores","Láseres","Aleaciones"]},
+            67:{name:"Holmio",symbol:"Ho",number:67,mass:"164.93",category:"lantanido",group:3,period:6,block:"f",electrons:67,protons:67,neutrons:98,config:"[Xe] 4f¹¹ 6s²",electro:"1.23",state:"Sólido",melting:"1474°C",boiling:"2700°C",density:"8.80 g/cm³",radius:"192 pm",ionization:"581 kJ/mol",affinity:"50 kJ/mol",year:"1878",discoverer:"Marc Delafontaine",origin:"Holmia",uses:["Imanes","Láseres médicos","Reactores","Aleaciones"]},
+            68:{name:"Erbio",symbol:"Er",number:68,mass:"167.26",category:"lantanido",group:3,period:6,block:"f",electrons:68,protons:68,neutrons:99,config:"[Xe] 4f¹² 6s²",electro:"1.24",state:"Sólido",melting:"1529°C",boiling:"2868°C",density:"9.07 g/cm³",radius:"189 pm",ionization:"589 kJ/mol",affinity:"50 kJ/mol",year:"1843",discoverer:"Carl Gustaf Mosander",origin:"Ytterby",uses:["Fibra óptica","Láseres","Vidrio rosa","Aleaciones"]},
+            69:{name:"Tulio",symbol:"Tm",number:69,mass:"168.93",category:"lantanido",group:3,period:6,block:"f",electrons:69,protons:69,neutrons:100,config:"[Xe] 4f¹³ 6s²",electro:"1.25",state:"Sólido",melting:"1545°C",boiling:"1950°C",density:"9.32 g/cm³",radius:"190 pm",ionization:"597 kJ/mol",affinity:"50 kJ/mol",year:"1879",discoverer:"Per Teodor Cleve",origin:"Thule",uses:["Láseres","Radioterapia","LEDs","Aleaciones"]},
+            70:{name:"Iterbio",symbol:"Yb",number:70,mass:"173.05",category:"lantanido",group:3,period:6,block:"f",electrons:70,protons:70,neutrons:103,config:"[Xe] 4f¹⁴ 6s²",electro:"-",state:"Sólido",melting:"819°C",boiling:"1196°C",density:"6.90 g/cm³",radius:"187 pm",ionization:"603 kJ/mol",affinity:"50 kJ/mol",year:"1878",discoverer:"Jean Charles Galissard",origin:"Ytterby",uses:["Acero inoxidable","Láseres","Investigación","Aleaciones"]},
+            71:{name:"Lutecio",symbol:"Lu",number:71,mass:"174.97",category:"lantanido",group:3,period:6,block:"f",electrons:71,protons:71,neutrons:104,config:"[Xe] 4f¹⁴ 5d¹ 6s²",electro:"1.27",state:"Sólido",melting:"1663°C",boiling:"3402°C",density:"9.84 g/cm³",radius:"187 pm",ionization:"524 kJ/mol",affinity:"50 kJ/mol",year:"1907",discoverer:"Georges Urbain",origin:"Lutetia",uses:["Catalizadores","PET scanning","LEDs","Investigación"]},
+            72:{name:"Hafnio",symbol:"Hf",number:72,mass:"178.49",category:"transicion",group:4,period:6,block:"d",electrons:72,protons:72,neutrons:106,config:"[Xe] 4f¹⁴ 5d² 6s²",electro:"1.30",state:"Sólido",melting:"2233°C",boiling:"4603°C",density:"13.31 g/cm³",radius:"175 pm",ionization:"659 kJ/mol",affinity:"0 kJ/mol",year:"1923",discoverer:"Dirk Coster",origin:"Hafnia",uses:["Reactores","Semiconductores","Aleaciones","Control nuclear"]},
+            73:{name:"Tantalio",symbol:"Ta",number:73,mass:"180.95",category:"transicion",group:5,period:6,block:"d",electrons:73,protons:73,neutrons:108,config:"[Xe] 4f¹⁴ 5d³ 6s²",electro:"1.50",state:"Sólido",melting:"3017°C",boiling:"5458°C",density:"16.65 g/cm³",radius:"170 pm",ionization:"761 kJ/mol",affinity:"31 kJ/mol",year:"1802",discoverer:"Anders Gustaf Ekeberg",origin:"Tántalo",uses:["Condensadores","Implantes","Aleaciones","Química"]},
+            74:{name:"Wolframio",symbol:"W",number:74,mass:"183.84",category:"transicion",group:6,period:6,block:"d",electrons:74,protons:74,neutrons:110,config:"[Xe] 4f¹⁴ 5d⁴ 6s²",electro:"2.36",state:"Sólido",melting:"3422°C",boiling:"5555°C",density:"19.25 g/cm³",radius:"162 pm",ionization:"770 kJ/mol",affinity:"79 kJ/mol",year:"1783",discoverer:"Hermanos Elhuyar",origin:"Sueco: tung sten",uses:["Filamentos","Herramientas corte","Aleaciones","Balística"]},
+            75:{name:"Renio",symbol:"Re",number:75,mass:"186.21",category:"transicion",group:7,period:6,block:"d",electrons:75,protons:75,neutrons:111,config:"[Xe] 4f¹⁴ 5d⁵ 6s²",electro:"1.90",state:"Sólido",melting:"3186°C",boiling:"5596°C",density:"21.02 g/cm³",radius:"151 pm",ionization:"760 kJ/mol",affinity:"6 kJ/mol",year:"1925",discoverer:"Walter Noddack",origin:"Rhenus",uses:["Turbinas motores","Catalizadores","Termopares","Investigación"]},
+            76:{name:"Osmio",symbol:"Os",number:76,mass:"190.23",category:"transicion",group:8,period:6,block:"d",electrons:76,protons:76,neutrons:114,config:"[Xe] 4f¹⁴ 5d⁶ 6s²",electro:"2.20",state:"Sólido",melting:"3033°C",boiling:"5012°C",density:"22.59 g/cm³",radius:"144 pm",ionization:"840 kJ/mol",affinity:"106 kJ/mol",year:"1803",discoverer:"Smithson Tennant",origin:"Griego: osme",uses:["Aleaciones duras","Puntas boli","Catalizadores","Microscopía"]},
+            77:{name:"Iridio",symbol:"Ir",number:77,mass:"192.22",category:"transicion",group:9,period:6,block:"d",electrons:77,protons:77,neutrons:115,config:"[Xe] 4f¹⁴ 5d⁷ 6s²",electro:"2.20",state:"Sólido",melting:"2446°C",boiling:"4428°C",density:"22.56 g/cm³",radius:"141 pm",ionization:"880 kJ/mol",affinity:"151 kJ/mol",year:"1803",discoverer:"Smithson Tennant",origin:"Iris",uses:["Bujías","Crucibles","Contactos eléctricos","Patrón metro"]},
+            78:{name:"Platino",symbol:"Pt",number:78,mass:"195.08",category:"transicion",group:10,period:6,block:"d",electrons:78,protons:78,neutrons:117,config:"[Xe] 4f¹⁴ 5d⁹ 6s¹",electro:"2.28",state:"Sólido",melting:"1768°C",boiling:"3825°C",density:"21.45 g/cm³",radius:"139 pm",ionization:"870 kJ/mol",affinity:"205 kJ/mol",year:"1735",discoverer:"Antonio de Ulloa",origin:"Español: platina",uses:["Joyas","Catalizadores","Electrónica","Medicina"]},
+            79:{name:"Oro",symbol:"Au",number:79,mass:"196.97",category:"transicion",group:11,period:6,block:"d",electrons:79,protons:79,neutrons:118,config:"[Xe] 4f¹⁴ 5d¹⁰ 6s¹",electro:"2.54",state:"Sólido",melting:"1064°C",boiling:"2856°C",density:"19.3 g/cm³",radius:"144 pm",ionization:"890 kJ/mol",affinity:"223 kJ/mol",year:"Prehistórico",discoverer:"Antigüedad",origin:"Sánscrito: jval",uses:["Reserva valor","Electrónica","Odontología","Nanotecnología"]},
+            80:{name:"Mercurio",symbol:"Hg",number:80,mass:"200.59",category:"transicion",group:12,period:6,block:"d",electrons:80,protons:80,neutrons:121,config:"[Xe] 4f¹⁴ 5d¹⁰ 6s²",electro:"2.00",state:"Líquido",melting:"-39°C",boiling:"357°C",density:"13.53 g/cm³",radius:"151 pm",ionization:"1007 kJ/mol",affinity:"0 kJ/mol",year:"Prehistórico",discoverer:"Antigüedad",origin:"Latín: hydrargyrum",uses:["Termómetros","Lámparas","Amalgamas","Interruptores"]},
+            81:{name:"Talio",symbol:"Tl",number:81,mass:"204.38",category:"metal-post",group:13,period:6,block:"p",electrons:81,protons:81,neutrons:123,config:"[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p¹",electro:"1.62",state:"Sólido",melting:"304°C",boiling:"1473°C",density:"11.85 g/cm³",radius:"156 pm",ionization:"589 kJ/mol",affinity:"19 kJ/mol",year:"1861",discoverer:"William Crookes",origin:"Griego: thallos",uses:["Semiconductores","Vidrio óptico","Veneno","Detectores"]},
+            82:{name:"Plomo",symbol:"Pb",number:82,mass:"207.2",category:"metal-post",group:14,period:6,block:"p",electrons:82,protons:82,neutrons:125,config:"[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p²",electro:"1.87",state:"Sólido",melting:"327°C",boiling:"1749°C",density:"11.34 g/cm³",radius:"154 pm",ionization:"716 kJ/mol",affinity:"35 kJ/mol",year:"Prehistórico",discoverer:"Antigüedad",origin:"Anglosajón: lead",uses:["Baterías","Blindaje RX","Soldadura","Pigmentos"]},
+            83:{name:"Bismuto",symbol:"Bi",number:83,mass:"208.98",category:"metal-post",group:15,period:6,block:"p",electrons:83,protons:83,neutrons:126,config:"[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p³",electro:"2.02",state:"Sólido",melting:"271°C",boiling:"1564°C",density:"9.78 g/cm³",radius:"143 pm",ionization:"703 kJ/mol",affinity:"91 kJ/mol",year:"1753",discoverer:"Claude Geoffroy",origin:"Alemán: wismut",uses:["Medicinas","Aleaciones","Cosméticos","Superconductores"]},
+            84:{name:"Polonio",symbol:"Po",number:84,mass:"209",category:"metal-post",group:16,period:6,block:"p",electrons:84,protons:84,neutrons:125,config:"[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁴",electro:"2.00",state:"Sólido",melting:"254°C",boiling:"962°C",density:"9.32 g/cm³",radius:"135 pm",ionization:"812 kJ/mol",affinity:"180 kJ/mol",year:"1898",discoverer:"Marie y Pierre Curie",origin:"Polonia",uses:["Eliminación estática","Fuentes calor","Investigación","Radiológico"]},
+            85:{name:"Astato",symbol:"At",number:85,mass:"210",category:"halogeno",group:17,period:6,block:"p",electrons:85,protons:85,neutrons:125,config:"[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁵",electro:"2.20",state:"Sólido",melting:"302°C",boiling:"337°C",density:"7 g/cm³",radius:"127 pm",ionization:"899 kJ/mol",affinity:"270 kJ/mol",year:"1940",discoverer:"Dale R. Corson",origin:"Griego: astatos",uses:["Radioterapia","Investigación","Trazadores","Nuclear"]},
+            86:{name:"Radón",symbol:"Rn",number:86,mass:"222",category:"noble",group:18,period:6,block:"p",electrons:86,protons:86,neutrons:136,config:"[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁶",electro:"-",state:"Gas",melting:"-71°C",boiling:"-62°C",density:"0.0097 g/cm³",radius:"120 pm",ionization:"1037 kJ/mol",affinity:"0 kJ/mol",year:"1900",discoverer:"Friedrich Ernst Dorn",origin:"Radio",uses:["Radioterapia","Geología","Sismos","Peligro radiactivo"]},
+            87:{name:"Francio",symbol:"Fr",number:87,mass:"223",category:"alcalino",group:1,period:7,block:"s",electrons:87,protons:87,neutrons:136,config:"[Rn] 7s¹",electro:"0.70",state:"Sólido",melting:"27°C",boiling:"677°C",density:"1.87 g/cm³",radius:"348 pm",ionization:"380 kJ/mol",affinity:"44 kJ/mol",year:"1939",discoverer:"Marguerite Perey",origin:"Francia",uses:["Investigación","Actínidos","Nuclear","Ciencia"]},
+            88:{name:"Radio",symbol:"Ra",number:88,mass:"226",category:"alcalinoterreo",group:2,period:7,block:"s",electrons:88,protons:88,neutrons:138,config:"[Rn] 7s²",electro:"0.90",state:"Sólido",melting:"700°C",boiling:"1737°C",density:"5.5 g/cm³",radius:"283 pm",ionization:"509 kJ/mol",affinity:"10 kJ/mol",year:"1898",discoverer:"Marie y Pierre Curie",origin:"Latín: radius",uses:["Radioterapia","Investigación","Relojes","Radiactivo"]},
+            89:{name:"Actinio",symbol:"Ac",number:89,mass:"227",category:"actinido",group:3,period:7,block:"f",electrons:89,protons:89,neutrons:138,config:"[Rn] 6d¹ 7s²",electro:"1.10",state:"Sólido",melting:"1227°C",boiling:"3198°C",density:"10.07 g/cm³",radius:"195 pm",ionization:"499 kJ/mol",affinity:"34 kJ/mol",year:"1899",discoverer:"Friedrich Oskar Giesel",origin:"Griego: aktis",uses:["Investigación","Neutrones","Nuclear","Ciencia"]},
+            90:{name:"Torio",symbol:"Th",number:90,mass:"232.04",category:"actinido",group:3,period:7,block:"f",electrons:90,protons:90,neutrons:142,config:"[Rn] 6d² 7s²",electro:"1.30",state:"Sólido",melting:"1750°C",boiling:"4788°C",density:"11.72 g/cm³",radius:"179 pm",ionization:"587 kJ/mol",affinity:"113 kJ/mol",year:"1828",discoverer:"Jöns Jacob Berzelius",origin:"Thor",uses:["Reactores","Aleaciones","Lámparas","Investigación"]},
+            91:{name:"Protactinio",symbol:"Pa",number:91,mass:"231.04",category:"actinido",group:3,period:7,block:"f",electrons:91,protons:91,neutrons:140,config:"[Rn] 5f² 6d¹ 7s²",electro:"1.50",state:"Sólido",melting:"1572°C",boiling:"4000°C",density:"15.37 g/cm³",radius:"163 pm",ionization:"568 kJ/mol",affinity:"54 kJ/mol",year:"1913",discoverer:"Kasimir Fajans",origin:"Griego: protos",uses:["Investigación","Datación","Nuclear","Estudios"]},
+            92:{name:"Uranio",symbol:"U",number:92,mass:"238.03",category:"actinido",group:3,period:7,block:"f",electrons:92,protons:92,neutrons:146,config:"[Rn] 5f³ 6d¹ 7s²",electro:"1.38",state:"Sólido",melting:"1132°C",boiling:"4131°C",density:"19.1 g/cm³",radius:"156 pm",ionization:"597 kJ/mol",affinity:"-",year:"1789",discoverer:"Martin Heinrich Klaproth",origin:"Planeta Urano",uses:["Combustible nuclear","Armas","Lastre","Datación"]},
+            93:{name:"Neptunio",symbol:"Np",number:93,mass:"237",category:"actinido",group:3,period:7,block:"f",electrons:93,protons:93,neutrons:144,config:"[Rn] 5f⁴ 6d¹ 7s²",electro:"1.36",state:"Sólido",melting:"644°C",boiling:"3902°C",density:"20.45 g/cm³",radius:"155 pm",ionization:"605 kJ/mol",affinity:"-",year:"1940",discoverer:"Edwin McMillan",origin:"Planeta Neptuno",uses:["Investigación","Detectores neutrones","Nuclear","Estudios"]},
+            94:{name:"Plutonio",symbol:"Pu",number:94,mass:"244",category:"actinido",group:3,period:7,block:"f",electrons:94,protons:94,neutrons:150,config:"[Rn] 5f⁶ 7s²",electro:"1.28",state:"Sólido",melting:"640°C",boiling:"3228°C",density:"19.84 g/cm³",radius:"159 pm",ionization:"584 kJ/mol",affinity:"-",year:"1940",discoverer:"Glenn T. Seaborg",origin:"Planeta Plutón",uses:["Armas nucleares","Combustible","RTG","Investigación"]},
+            95:{name:"Americio",symbol:"Am",number:95,mass:"243",category:"actinido",group:3,period:7,block:"f",electrons:95,protons:95,neutrons:148,config:"[Rn] 5f⁷ 7s²",electro:"1.30",state:"Sólido",melting:"1176°C",boiling:"2607°C",density:"13.69 g/cm³",radius:"173 pm",ionization:"578 kJ/mol",affinity:"-",year:"1944",discoverer:"Glenn T. Seaborg",origin:"América",uses:["Detectores humo","Medidores","Investigación","Rayos gamma"]},
+            96:{name:"Curio",symbol:"Cm",number:96,mass:"247",category:"actinido",group:3,period:7,block:"f",electrons:96,protons:96,neutrons:151,config:"[Rn] 5f⁷ 6d¹ 7s²",electro:"1.30",state:"Sólido",melting:"1340°C",boiling:"3110°C",density:"13.51 g/cm³",radius:"174 pm",ionization:"581 kJ/mol",affinity:"-",year:"1944",discoverer:"Glenn T. Seaborg",origin:"Marie y Pierre Curie",uses:["Investigación","Rayos X","Nuclear","Estudios"]},
+            97:{name:"Berkelio",symbol:"Bk",number:97,mass:"247",category:"actinido",group:3,period:7,block:"f",electrons:97,protons:97,neutrons:150,config:"[Rn] 5f⁹ 7s²",electro:"1.30",state:"Sólido",melting:"1050°C",boiling:"2627°C",density:"14.78 g/cm³",radius:"170 pm",ionization:"601 kJ/mol",affinity:"-",year:"1949",discoverer:"Glenn T. Seaborg",origin:"Berkeley",uses:["Investigación","Síntesis","Ciencia","Estudios"]},
+            98:{name:"Californio",symbol:"Cf",number:98,mass:"251",category:"actinido",group:3,period:7,block:"f",electrons:98,protons:98,neutrons:153,config:"[Rn] 5f¹⁰ 7s²",electro:"1.30",state:"Sólido",melting:"900°C",boiling:"1743°C",density:"15.1 g/cm³",radius:"168 pm",ionization:"608 kJ/mol",affinity:"-",year:"1950",discoverer:"Glenn T. Seaborg",origin:"California",uses:["Neutrones","Análisis materiales","Medicina","Investigación"]},
+            99:{name:"Einsteinio",symbol:"Es",number:99,mass:"252",category:"actinido",group:3,period:7,block:"f",electrons:99,protons:99,neutrons:153,config:"[Rn] 5f¹¹ 7s²",electro:"1.30",state:"Sólido",melting:"860°C",boiling:"1269°C",density:"8.84 g/cm³",radius:"165 pm",ionization:"619 kJ/mol",affinity:"-",year:"1952",discoverer:"Albert Ghiorso",origin:"Albert Einstein",uses:["Investigación","Síntesis","Ciencia","Estudios"]},
+            100:{name:"Fermio",symbol:"Fm",number:100,mass:"257",category:"actinido",group:3,period:7,block:"f",electrons:100,protons:100,neutrons:157,config:"[Rn] 5f¹² 7s²",electro:"1.30",state:"Sólido",melting:"1527°C",boiling:"-",density:"-",radius:"-",ionization:"627 kJ/mol",affinity:"-",year:"1952",discoverer:"Albert Ghiorso",origin:"Enrico Fermi",uses:["Investigación","Nuclear","Estudios","Síntesis"]},
+            101:{name:"Mendelevio",symbol:"Md",number:101,mass:"258",category:"actinido",group:3,period:7,block:"f",electrons:101,protons:101,neutrons:157,config:"[Rn] 5f¹³ 7s²",electro:"1.30",state:"Sólido",melting:"827°C",boiling:"-",density:"-",radius:"-",ionization:"635 kJ/mol",affinity:"-",year:"1955",discoverer:"Albert Ghiorso",origin:"Dmitri Mendeléyev",uses:["Investigación","Ciencia","Estudios","Síntesis"]},
+            102:{name:"Nobelio",symbol:"No",number:102,mass:"259",category:"actinido",group:3,period:7,block:"f",electrons:102,protons:102,neutrons:157,config:"[Rn] 5f¹⁴ 7s²",electro:"1.30",state:"Sólido",melting:"827°C",boiling:"-",density:"-",radius:"-",ionization:"642 kJ/mol",affinity:"-",year:"1958",discoverer:"Albert Ghiorso",origin:"Alfred Nobel",uses:["Investigación","Ciencia","Estudios","Síntesis"]},
+            103:{name:"Lawrencio",symbol:"Lr",number:103,mass:"262",category:"actinido",group:3,period:7,block:"f",electrons:103,protons:103,neutrons:159,config:"[Rn] 5f¹⁴ 7s² 7p¹",electro:"-",state:"Sólido",melting:"1627°C",boiling:"-",density:"-",radius:"-",ionization:"470 kJ/mol",affinity:"-",year:"1961",discoverer:"Albert Ghiorso",origin:"Ernest Lawrence",uses:["Investigación","Ciencia","Estudios","Síntesis"]},
+            104:{name:"Rutherfordio",symbol:"Rf",number:104,mass:"267",category:"transicion",group:4,period:7,block:"d",electrons:104,protons:104,neutrons:163,config:"[Rn] 5f¹⁴ 6d² 7s²",electro:"-",state:"Sólido",melting:"-",boiling:"-",density:"-",radius:"-",ionization:"580 kJ/mol",affinity:"-",year:"1964",discoverer:"Georgy Flerov",origin:"Ernest Rutherford",uses:["Investigación","Ciencia","Estudios","Síntesis"]},
+            105:{name:"Dubnio",symbol:"Db",number:105,mass:"268",category:"transicion",group:5,period:7,block:"d",electrons:105,protons:105,neutrons:163,config:"[Rn] 5f¹⁴ 6d³ 7s²",electro:"-",state:"Sólido",melting:"-",boiling:"-",density:"-",radius:"-",ionization:"-",affinity:"-",year:"1967",discoverer:"Georgy Flerov",origin:"Dubna (Rusia)",uses:["Investigación","Ciencia","Estudios","Síntesis"]},
+            106:{name:"Seaborgio",symbol:"Sg",number:106,mass:"271",category:"transicion",group:6,period:7,block:"d",electrons:106,protons:106,neutrons:165,config:"[Rn] 5f¹⁴ 6d⁴ 7s²",electro:"-",state:"Sólido",melting:"-",boiling:"-",density:"-",radius:"-",ionization:"-",affinity:"-",year:"1974",discoverer:"Albert Ghiorso",origin:"Glenn T. Seaborg",uses:["Investigación","Ciencia","Estudios","Síntesis"]},
+            107:{name:"Bohrio",symbol:"Bh",number:107,mass:"272",category:"transicion",group:7,period:7,block:"d",electrons:107,protons:107,neutrons:165,config:"[Rn] 5f¹⁴ 6d⁵ 7s²",electro:"-",state:"Sólido",melting:"-",boiling:"-",density:"-",radius:"-",ionization:"-",affinity:"-",year:"1981",discoverer:"Peter Armbruster",origin:"Niels Bohr",uses:["Investigación","Ciencia","Estudios","Síntesis"]},
+            108:{name:"Hasio",symbol:"Hs",number:108,mass:"270",category:"transicion",group:8,period:7,block:"d",electrons:108,protons:108,neutrons:162,config:"[Rn] 5f¹⁴ 6d⁶ 7s²",electro:"-",state:"Sólido",melting:"-",boiling:"-",density:"-",radius:"-",ionization:"-",affinity:"-",year:"1984",discoverer:"Peter Armbruster",origin:"Hesse (Alemania)",uses:["Investigación","Ciencia","Estudios","Síntesis"]},
+            109:{name:"Meitnerio",symbol:"Mt",number:109,mass:"276",category:"transicion",group:9,period:7,block:"d",electrons:109,protons:109,neutrons:167,config:"[Rn] 5f¹⁴ 6d⁷ 7s²",electro:"-",state:"Sólido",melting:"-",boiling:"-",density:"-",radius:"-",ionization:"-",affinity:"-",year:"1982",discoverer:"Peter Armbruster",origin:"Lise Meitner",uses:["Investigación","Ciencia","Estudios","Síntesis"]},
+            110:{name:"Darmstadtio",symbol:"Ds",number:110,mass:"281",category:"transicion",group:10,period:7,block:"d",electrons:110,protons:110,neutrons:171,config:"[Rn] 5f¹⁴ 6d⁸ 7s²",electro:"-",state:"Sólido",melting:"-",boiling:"-",density:"-",radius:"-",ionization:"-",affinity:"-",year:"1994",discoverer:"Peter Armbruster",origin:"Darmstadt",uses:["Investigación","Ciencia","Estudios","Síntesis"]},
+            111:{name:"Roentgenio",symbol:"Rg",number:111,mass:"280",category:"transicion",group:11,period:7,block:"d",electrons:111,protons:111,neutrons:169,config:"[Rn] 5f¹⁴ 6d⁹ 7s²",electro:"-",state:"Sólido",melting:"-",boiling:"-",density:"-",radius:"-",ionization:"-",affinity:"-",year:"1994",discoverer:"Peter Armbruster",origin:"Wilhelm Röntgen",uses:["Investigación","Ciencia","Estudios","Síntesis"]},
+            112:{name:"Copernicio",symbol:"Cn",number:112,mass:"285",category:"transicion",group:12,period:7,block:"d",electrons:112,protons:112,neutrons:173,config:"[Rn] 5f¹⁴ 6d¹⁰ 7s²",electro:"-",state:"Sólido",melting:"-",boiling:"-",density:"-",radius:"-",ionization:"-",affinity:"-",year:"1996",discoverer:"Sigurd Hofmann",origin:"Nicolás Copérnico",uses:["Investigación","Ciencia","Estudios","Síntesis"]},
+            113:{name:"Nihonio",symbol:"Nh",number:113,mass:"286",category:"metal-post",group:13,period:7,block:"p",electrons:113,protons:113,neutrons:173,config:"[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p¹",electro:"-",state:"Sólido",melting:"-",boiling:"-",density:"-",radius:"-",ionization:"-",affinity:"-",year:"2004",discoverer:"RIKEN (Japón)",origin:"Nihon (Japón)",uses:["Investigación","Ciencia","Estudios","Síntesis"]},
+            114:{name:"Flerovio",symbol:"Fl",number:114,mass:"289",category:"metal-post",group:14,period:7,block:"p",electrons:114,protons:114,neutrons:175,config:"[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p²",electro:"-",state:"Sólido",melting:"-",boiling:"-",density:"-",radius:"-",ionization:"-",affinity:"-",year:"1999",discoverer:"JINR (Rusia)",origin:"Laboratorio Flerov",uses:["Investigación","Ciencia","Estudios","Síntesis"]},
+            115:{name:"Moscovio",symbol:"Mc",number:115,mass:"290",category:"metal-post",group:15,period:7,block:"p",electrons:115,protons:115,neutrons:175,config:"[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p³",electro:"-",state:"Sólido",melting:"-",boiling:"-",density:"-",radius:"-",ionization:"-",affinity:"-",year:"2003",discoverer:"JINR-LLNL",origin:"Moscú (Rusia)",uses:["Investigación","Ciencia","Estudios","Síntesis"]},
+            116:{name:"Livermorio",symbol:"Lv",number:116,mass:"293",category:"metal-post",group:16,period:7,block:"p",electrons:116,protons:116,neutrons:177,config:"[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁴",electro:"-",state:"Sólido",melting:"-",boiling:"-",density:"-",radius:"-",ionization:"-",affinity:"-",year:"2000",discoverer:"JINR-LLNL",origin:"Lawrence Livermore",uses:["Investigación","Ciencia","Estudios","Síntesis"]},
+            117:{name:"Tenesino",symbol:"Ts",number:117,mass:"294",category:"halogeno",group:17,period:7,block:"p",electrons:117,protons:117,neutrons:177,config:"[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁵",electro:"-",state:"Sólido",melting:"-",boiling:"-",density:"-",radius:"-",ionization:"-",affinity:"-",year:"2010",discoverer:"JINR-LLNL",origin:"Tennessee",uses:["Investigación","Ciencia","Estudios","Síntesis"]},
+            118:{name:"Oganesón",symbol:"Og",number:118,mass:"294",category:"noble",group:18,period:7,block:"p",electrons:118,protons:118,neutrons:176,config:"[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁶",electro:"-",state:"Sólido",melting:"-",boiling:"-",density:"-",radius:"-",ionization:"-",affinity:"-",year:"2006",discoverer:"JINR-LLNL",origin:"Yuri Oganesián",uses:["Investigación","Ciencia","Estudios","Síntesis"]}
+        };
+
+        const pos=[
+            [1,2,2],[2,19,2],[3,2,3],[4,3,3],[5,14,3],[6,15,3],[7,16,3],[8,17,3],[9,18,3],[10,19,3],
+            [11,2,4],[12,3,4],[13,14,4],[14,15,4],[15,16,4],[16,17,4],[17,18,4],[18,19,4],
+            [19,2,5],[20,3,5],[21,4,5],[22,5,5],[23,6,5],[24,7,5],[25,8,5],[26,9,5],[27,10,5],[28,11,5],[29,12,5],[30,13,5],[31,14,5],[32,15,5],[33,16,5],[34,17,5],[35,18,5],[36,19,5],
+            [37,2,6],[38,3,6],[39,4,6],[40,5,6],[41,6,6],[42,7,6],[43,8,6],[44,9,6],[45,10,6],[46,11,6],[47,12,6],[48,13,6],[49,14,6],[50,15,6],[51,16,6],[52,17,6],[53,18,6],[54,19,6],
+            [55,2,7],[56,3,7],[72,5,7],[73,6,7],[74,7,7],[75,8,7],[76,9,7],[77,10,7],[78,11,7],[79,12,7],[80,13,7],[81,14,7],[82,15,7],[83,16,7],[84,17,7],[85,18,7],[86,19,7],
+            [87,2,8],[88,3,8],[104,5,8],[105,6,8],[106,7,8],[107,8,8],[108,9,8],[109,10,8],[110,11,8],[111,12,8],[112,13,8],[113,14,8],[114,15,8],[115,16,8],[116,17,8],[117,18,8],[118,19,8],
+            [57,5,10],[58,6,10],[59,7,10],[60,8,10],[61,9,10],[62,10,10],[63,11,10],[64,12,10],[65,13,10],[66,14,10],[67,15,10],[68,16,10],[69,17,10],[70,18,10],[71,19,10],
+            [89,5,11],[90,6,11],[91,7,11],[92,8,11],[93,9,11],[94,10,11],[95,11,11],[96,12,11],[97,13,11],[98,14,11],[99,15,11],[100,16,11],[101,17,11],[102,18,11],[103,19,11]
+        ];
+
+        let cZ=1,cV='table',aF='all',eE={};
+
+        // ===== AUTO-DETECCIÓN POR URL =====
+        function autoDetect() {
+            const p = new URLSearchParams(window.location.search);
+            const t = p.get('id') || p.get('q') || p.get('elemento');
+            if (!t) return;
+            let m = null;
+            if (!isNaN(t)) {
+                m = DB[t];
+            } else {
+                const cl = t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                for (let k in DB) {
+                    const el = DB[k];
+                    const n = el.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    const s = el.symbol.toLowerCase();
+                    if (n.includes(cl) || s === cl || n.includes(cl.substring(0, 3))) {
+                        m = el; break;
+                    }
+                }
+            }
+            if (m) {
+                setTimeout(() => {
+                    openM(m.number);
+                    const sh = document.querySelector('.s-head');
+                    if(sh) {
+                        sh.style.borderBottom = '2px solid var(--accent)';
+                        sh.style.boxShadow = '0 4px 20px var(--accent-glow)';
+                    }
+                    const badge = document.getElementById('sB');
+                    if(badge) {
+                        badge.style.background = '#34d399';
+                        badge.style.color = '#000';
+                        badge.style.borderColor = '#34d399';
+                        badge.textContent = '✓ DETECTADO';
+                        badge.style.animation = 'hp 1s ease-in-out infinite';
+                    }
+                }, 400);
+            }
+        }
+
+        // Partículas
+        const cv = document.getElementById('pc');
+        const cx = cv.getContext('2d');
+        let pts = [];
+        function rC() { cv.width = window.innerWidth; cv.height = window.innerHeight; }
+        function cP() {
+            pts = [];
+            const n = Math.min(60, Math.floor(window.innerWidth / 20));
+            for (let i = 0; i < n; i++) {
+                pts.push({x: Math.random() * cv.width, y: Math.random() * cv.height, vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3, s: Math.random() * 2 + 0.5, o: Math.random() * 0.3 + 0.1});
+            }
+        }
+        function dP() {
+            cx.clearRect(0, 0, cv.width, cv.height);
+            pts.forEach((p, i) => {
+                p.x += p.vx; p.y += p.vy;
+                if (p.x < 0) p.x = cv.width; if (p.x > cv.width) p.x = 0;
+                if (p.y < 0) p.y = cv.height; if (p.y > cv.height) p.y = 0;
+                cx.beginPath(); cx.arc(p.x, p.y, p.s, 0, Math.PI * 2);
+                cx.fillStyle = `rgba(0, 212, 255, ${p.o})`; cx.fill();
+                for (let j = i + 1; j < pts.length; j++) {
+                    const dx = p.x - pts[j].x, dy = p.y - pts[j].y, d = Math.sqrt(dx * dx + dy * dy);
+                    if (d < 120) { cx.beginPath(); cx.moveTo(p.x, p.y); cx.lineTo(pts[j].x, pts[j].y); cx.strokeStyle = `rgba(0, 212, 255, ${0.05 * (1 - d / 120)})`; cx.lineWidth = 0.5; cx.stroke(); }
+                }
+            });
+            requestAnimationFrame(dP);
+        }
+        rC(); cP(); dP();
+        window.addEventListener('resize', () => { rC(); cP(); });
+
+        // Grid
+        const gr = document.getElementById('gr');
+        for (let i = 1; i <= 18; i++) {
+            const g = document.createElement('div'); g.className = 'g-label'; g.textContent = i; g.style.gridColumn = i + 1; g.style.gridRow = 1; gr.appendChild(g);
+        }
+        [2,3,4,5,6,7,8].forEach((r, i) => {
+            const p = document.createElement('div'); p.className = 'p-label'; p.textContent = i + 1; p.style.gridColumn = 1; p.style.gridRow = r; gr.appendChild(p);
+        });
+        [[10,'6*'],[11,'7*']].forEach(([r, t]) => {
+            const p = document.createElement('div'); p.className = 'p-label'; p.textContent = t; p.style.gridColumn = 1; p.style.gridRow = r; p.style.opacity = '0.4'; gr.appendChild(p);
+        });
+        pos.forEach(([num, col, row]) => {
+            const d = DB[num]; if (!d) return;
+            const el = document.createElement('div');
+            el.className = `el ${d.category}`;
+            el.style.gridColumn = col; el.style.gridRow = row;
+            el.dataset.number = num;
+            el.innerHTML = `<span class="el-n">${num}</span><span class="el-s">${d.symbol}</span><span class="el-nm">${d.name}</span>`;
+            el.addEventListener('click', () => openM(num));
+            gr.appendChild(el); eE[num] = el;
+        });
+        [[4,7,'57-71'],[4,8,'89-103']].forEach(([c, r, t]) => {
+            const m = document.createElement('div'); m.className = 'el'; m.style.gridColumn = c; m.style.gridRow = r; m.style.background = 'rgba(255,255,255,0.02)'; m.style.border = '1px dashed rgba(255,255,255,0.1)'; m.style.cursor = 'default'; m.innerHTML = `<span style="font-size:0.6em; opacity:0.4; color:var(--text3)">${t}</span>`; gr.appendChild(m);
+        });
+
+        // Filtros
+        const flt = document.getElementById('flt');
+        const ab = document.createElement('button'); ab.className = 'chip act'; ab.dataset.c = 'all'; ab.textContent = 'Todos'; ab.onclick = () => sF('all', ab); flt.appendChild(ab);
+        for (let [k, v] of Object.entries(cats)) {
+            const b = document.createElement('button'); b.className = 'chip'; b.dataset.c = k; b.textContent = v.name; b.onclick = () => sF(k, b); flt.appendChild(b);
+        }
+        function sF(cat, btn) {
+            aF = cat;
+            document.querySelectorAll('.chip').forEach(b => b.classList.remove('act'));
+            btn.classList.add('act');
+            Object.entries(eE).forEach(([num, el]) => {
+                const d = DB[num];
+                if (cat === 'all' || d.category === cat) {
+                    el.classList.remove('dim'); el.classList.add('hl');
+                    setTimeout(() => el.classList.remove('hl'), 800);
+                } else { el.classList.add('dim'); el.classList.remove('hl'); }
+            });
+        }
+
+        // Zoom
+        function zI() { if (cZ < 1.5) { cZ = Math.round((cZ + 0.1) * 100) / 100; aZ(); } }
+        function zO() { if (cZ > 0.5) { cZ = Math.round((cZ - 0.1) * 100) / 100; aZ(); } }
+        function zR() { cZ = 1; aZ(); }
+        function aZ() { gr.style.transform = `scale(${cZ})`; document.getElementById('zL').textContent = Math.round(cZ * 100) + '%'; }
+
+        // Vista
+        function sV(v) {
+            cV = v;
+            document.getElementById('bT').classList.toggle('act', v === 'table');
+            document.getElementById('bL').classList.toggle('act', v === 'list');
+            if (v === 'table') {
+                document.getElementById('tW').style.display = 'block';
+                document.getElementById('lV').classList.remove('act');
+                document.getElementById('sR').classList.remove('act');
+            } else {
+                document.getElementById('tW').style.display = 'none';
+                document.getElementById('lV').classList.add('act');
+                document.getElementById('sR').classList.remove('act');
+                bLV();
+            }
+        }
+        function bLV() {
+            const lv = document.getElementById('lV');
+            if (lv.children.length > 0) return;
+            Object.entries(cats).forEach(([ck, cv]) => {
+                const g = document.createElement('div'); g.className = 'l-group';
+                const t = document.createElement('div'); t.className = 'l-head';
+                t.innerHTML = `<div class="l-dot" style="background:${cv.color}; box-shadow: 0 0 8px ${cv.color}"></div><span class="l-title">${cv.name}</span><span class="l-count">${Object.values(DB).filter(e => e.category === ck).length}</span><span class="l-arrow">▼</span>`;
+                const it = document.createElement('div'); it.className = 'l-items';
+                t.onclick = () => { t.classList.toggle('open'); it.classList.toggle('open'); };
+                Object.entries(DB).forEach(([num, d]) => {
+                    if (d.category !== ck) return;
+                    const i = document.createElement('div'); i.className = 'l-item';
+                    i.innerHTML = `<div class="l-sym" style="color:${cv.color}">${d.symbol}</div><div class="l-info"><div class="l-name">${d.name}</div><div class="l-detail">Z=${d.number} · ${d.config}</div></div><div class="l-mass">${d.mass}u</div>`;
+                    i.onclick = () => openM(parseInt(num)); it.appendChild(i);
+                });
+                g.appendChild(t); g.appendChild(it); lv.appendChild(g);
+            });
+        }
+
+        // Búsqueda
+        const sI = document.getElementById('sI'), sC = document.getElementById('sC');
+        sI.addEventListener('input', function() {
+            const q = this.value.toLowerCase().trim();
+            sC.classList.toggle('vis', q.length > 0);
+            const r = document.getElementById('sR');
+            if (q.length === 0) {
+                r.classList.remove('act');
+                document.querySelectorAll('.el').forEach(el => { el.classList.remove('hl'); el.classList.remove('dim'); });
+                if (cV === 'table') document.getElementById('tW').style.display = 'block';
+                return;
+            }
+            const m = Object.entries(DB).filter(([n, d]) => d.name.toLowerCase().includes(q) || d.symbol.toLowerCase().includes(q) || n.includes(q));
+            if (m.length > 0) {
+                r.innerHTML = `<div style="margin-bottom:12px"><span style="font-size:0.8rem;color:var(--text3);font-weight:500"><strong style="color:var(--accent)">${m.length}</strong> elemento${m.length > 1 ? 's' : ''} encontrado${m.length > 1 ? 's' : ''}</span></div>` +
+                    m.map(([n, d]) => `<div class="r-card" onclick="openM(${n})"><div class="r-sym" style="color:${cats[d.category].color}">${d.symbol}</div><div class="r-info"><div class="r-name">${d.name}</div><div class="r-meta">${d.config} · ${d.state}</div></div><div class="r-mass">${d.mass}u</div></div>`).join('');
+                r.classList.add('act');
+                document.getElementById('tW').style.display = 'none';
+                document.getElementById('lV').classList.remove('act');
+                document.querySelectorAll('.el').forEach(el => el.classList.remove('hl'));
+                m.forEach(([n]) => { if (eE[n]) eE[n].classList.add('hl'); });
+            } else {
+                r.innerHTML = `<div class="no-res"><span class="no-res-e">🔍</span><div class="no-res-t">No se encontraron resultados</div><div class="no-res-s">Intenta con otro nombre, símbolo o número</div></div>`;
+                r.classList.add('act');
+            }
+        });
+        function cS() { sI.value = ''; sI.dispatchEvent(new Event('input')); sI.focus(); }
+
+        // Modal
+        function openM(num) {
+            const d = DB[num]; if (!d) return;
+            const cat = cats[d.category];
+            document.getElementById('sSB').style.color = cat.color;
+            document.getElementById('sSB').style.borderColor = cat.color + '40';
+            document.getElementById('sSB').style.background = `linear-gradient(135deg, ${cat.color}15, transparent)`;
+            document.getElementById('sS').textContent = d.symbol;
+            document.getElementById('sN').textContent = d.name;
+            document.getElementById('sC2').textContent = cat.name;
+            document.getElementById('sC2').style.color = cat.color;
+            document.getElementById('sB').textContent = '#' + d.number;
+            document.getElementById('iN').textContent = d.number;
+            document.getElementById('iM').textContent = d.mass + ' u';
+            document.getElementById('iP').textContent = d.protons;
+            document.getElementById('iNe').textContent = d.neutrons;
+            document.getElementById('iE').textContent = d.electrons;
+            document.getElementById('sCfg').textContent = d.config;
+            document.getElementById('iG').textContent = d.group || '-';
+            document.getElementById('iPe').textContent = d.period;
+            document.getElementById('iBl').textContent = d.block.toUpperCase();
+            document.getElementById('iEl').textContent = d.electro || '-';
+            document.getElementById('pS').textContent = d.state;
+            document.getElementById('pM').textContent = d.melting;
+            document.getElementById('pB').textContent = d.boiling;
+            document.getElementById('pD').textContent = d.density || '-';
+            document.getElementById('pR').textContent = d.radius || '-';
+            document.getElementById('pI').textContent = d.ionization || '-';
+            document.getElementById('pA').textContent = d.affinity || '-';
+            document.getElementById('hY').textContent = d.year;
+            document.getElementById('hD').textContent = d.discoverer;
+            document.getElementById('hO').textContent = d.origin;
+            document.getElementById('sU').innerHTML = d.uses.map(u => `<li>${u}</li>`).join('');
+            cMA(d);
+            document.getElementById('mO').classList.add('act');
+            document.getElementById('bS').classList.add('act');
+            document.body.style.overflow = 'hidden';
+            document.querySelectorAll('.s-tab').forEach((t, i) => t.classList.toggle('act', i === 0));
+            document.querySelectorAll('.s-section').forEach((s, i) => s.classList.toggle('act', i === 0));
+        }
+        function cM() {
+            document.getElementById('mO').classList.remove('act');
+            document.getElementById('bS').classList.remove('act');
+            document.body.style.overflow = '';
+        }
+        function sST(n, b) {
+            document.querySelectorAll('.s-tab').forEach(t => t.classList.remove('act'));
+            document.querySelectorAll('.s-section').forEach(s => s.classList.remove('act'));
+            b.classList.add('act');
+            document.getElementById('s-' + n).classList.add('act');
+        }
+        function cMA(d) {
+            const c = document.getElementById('aV'); c.innerHTML = '';
+            const n = document.createElement('div'); n.className = 'atom-nuc'; c.appendChild(n);
+            let r = d.electrons, mx = [2, 8, 18, 32, 32, 18, 8], sh = [];
+            for (let i = 0; i < mx.length && r > 0; i++) { const c2 = Math.min(mx[i], r); sh.push(c2); r -= c2; }
+            sh.forEach((ec, si) => {
+                const s = document.createElement('div'); s.className = 'atom-sh';
+                const rd = 22 + (si * 20); s.style.width = `${rd * 2}px`; s.style.height = `${rd * 2}px`;
+                s.style.animationDuration = `${8 + si * 4}s`;
+                for (let i = 0; i < ec; i++) {
+                    const e = document.createElement('div'); e.className = 'atom-e';
+                    const ang = (360 / ec) * i, rad = (ang * Math.PI) / 180;
+                    e.style.transform = `translate(${Math.cos(rad) * rd}px, ${Math.sin(rad) * rd}px)`;
+                    s.appendChild(e);
+                }
+                c.appendChild(s);
+            });
+        }
+
+        // Scroll
+        const sT = document.getElementById('sT');
+        document.getElementById('tW').addEventListener('scroll', function() { sT.classList.toggle('vis', this.scrollTop > 200); });
+        function sTop() { document.getElementById('tW').scrollTo({ top: 0, behavior: 'smooth' }); }
+
+        // Touch
+        let tY = 0;
+        document.getElementById('bS').addEventListener('touchstart', e => { tY = e.touches[0].clientY; }, { passive: true });
+        document.getElementById('bS').addEventListener('touchmove', e => { if (e.touches[0].clientY - tY > 80) cM(); }, { passive: true });
+
+        // Init
+        window.addEventListener('load', () => {
+            autoDetect();
+            if (!window.location.search) {
+                const o = document.querySelector('[data-number="8"]');
+                if (o) setTimeout(() => o.click(), 300);
+            }
+        });
+    </script>
+</body>
+</html>
